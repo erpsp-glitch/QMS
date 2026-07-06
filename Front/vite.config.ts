@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import autoprefixer from "autoprefixer";
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   css: {
@@ -12,8 +11,11 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5009,   // 👈 custom port
-    open: true,   // auto-open in browser (optional)
-    host: true    // allow LAN access (optional)
-  }
+    port: 5009,
+    open: true,
+    host: true,
+  },
+  build: {
+    outDir: "dist",
+  },
 });
