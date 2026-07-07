@@ -5,8 +5,8 @@ import { apiMsg } from "./types";
 import {
   FiPlus, FiSearch, FiTrash2, FiX, FiRefreshCw, FiChevronDown,
   FiChevronUp, FiAlertTriangle, FiCheckCircle, FiCalendar,
-  FiClock, FiDownload, FiPrinter, FiBarChart2, FiMapPin,
-  FiUser, FiGrid, FiList, FiSave, FiFileText
+  FiClock, FiDownload, FiPrinter, FiMapPin,
+  FiUser, FiGrid, FiList, FiSave,
 } from "react-icons/fi";
 
 interface ScheduleRow { department: string; location: string; auditee: string; auditDate: string; startTime: string; endTime: string; }
@@ -88,15 +88,15 @@ export default function AuditSchedulePage() {
   const sort = (key: string) => setSortConfig(prev => prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" });
   const sortIcon = (key: string) => sortConfig?.key === key ? (sortConfig.dir === "asc" ? <FiChevronUp className="inline" /> : <FiChevronDown className="inline" />) : null;
 
-  const filtered = savedSchedules.filter(s => !search || [s.department, s.auditee, s.location].some((v: string) => v?.toLowerCase().includes(search.toLowerCase())));
+  const filtered = savedSchedules.filter(s => !search || [s.department, s.auditee, s.location].some(v => v?.toLowerCase().includes(search.toLowerCase())));
   const displaySchedules = sortConfig ? [...filtered].sort((a, b) => {
-    const av = a[sortConfig.key], bv = b[sortConfig.key];
+    const av = a[sortConfig.key as keyof AuditSchedule], bv = b[sortConfig.key as keyof AuditSchedule];
     if (av == null) return 1; if (bv == null) return -1;
     return sortConfig.dir === "asc" ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
   }) : filtered;
 
   const byDate: Record<string, AuditSchedule[]> = {};
-  savedSchedules.forEach((s: AuditSchedule) => { byDate[s.auditDate] = [...(byDate[s.auditDate] || []), s]; });
+  savedSchedules.forEach((s: AuditSchedule) => { const key = s.auditDate ?? ""; byDate[key] = [...(byDate[key] || []), s]; });
 
   const stats = {
     total: savedSchedules.length,

@@ -4,9 +4,9 @@ import { auditorApi, auditApi, certApi } from "../../api/qms.api";
 import type { AuditPlan, Certification, Auditor, CertRef, InputChg } from "./types";
 import { apiMsg } from "./types";
 import {
-  FiPlus, FiSearch, FiEdit, FiTrash2, FiX, FiAlertCircle, FiRefreshCw,
+  FiPlus, FiSearch, FiEdit, FiTrash2, FiX, FiRefreshCw,
   FiFilter, FiChevronDown, FiChevronUp, FiDownload, FiPrinter, FiEye,
-  FiEyeOff, FiCheckCircle, FiClock, FiAlertTriangle, FiBarChart2,
+   FiCheckCircle, FiClock, FiAlertTriangle, FiBarChart2,
   FiFileText, FiLayers, FiCopy, FiGrid, FiList
 } from "react-icons/fi";
 
@@ -86,7 +86,8 @@ export default function AuditPlanPage() {
     }
     if (sortConfig) {
       r = [...r].sort((a, b) => {
-        const av = a[sortConfig.key], bv = b[sortConfig.key];
+        const av = a[sortConfig.key as keyof AuditPlan];
+        const bv = b[sortConfig.key as keyof AuditPlan];
         if (av == null) return 1; if (bv == null) return -1;
         return sortConfig.dir === "asc" ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
       });
@@ -146,7 +147,10 @@ export default function AuditPlanPage() {
     const v = e.target.value;
     const updated = { ...form, [k]: v };
     if (k === "plannedStartDate" || k === "plannedEndDate")
-      updated.durationDays = calcDuration(updated.plannedStartDate, updated.plannedEndDate);
+      updated.durationDays = calcDuration(
+updated.plannedStartDate ?? "",
+updated.plannedEndDate ?? ""
+);
     setForm(updated);
   };
 
@@ -195,7 +199,7 @@ export default function AuditPlanPage() {
     planned: filtered.filter(r => r.status === "PLANNED").length,
     approved: filtered.filter(r => r.approvalStatus === "APPROVED").length,
     inProgress: filtered.filter(r => r.status === "IN_PROGRESS").length,
-    completed: filtered.filter(r => ["COMPLETED","CLOSED"].includes(r.status)).length,
+    completed: filtered.filter(r => ["COMPLETED","CLOSED"].includes(r.status ?? "")).length,
     cancelled: filtered.filter(r => r.status === "CANCELLED").length,
   };
 
@@ -327,8 +331,8 @@ export default function AuditPlanPage() {
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.plannedStartDate || "—"}</td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.plannedEndDate || "—"}</td>
                       <td className="px-4 py-3 text-center text-gray-500">{r.durationDays || "—"}</td>
-                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status] || "bg-gray-100 text-gray-600"}`}>{statusLabel(r.status)}</span></td>
-                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${APPROVAL_BADGE[r.approvalStatus] || "bg-gray-100 text-gray-600"}`}>{r.approvalStatus || "PENDING"}</span></td>
+                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status ?? "DRAFT"] || "bg-gray-100 text-gray-600"}`}>{statusLabel(r.status ?? "DRAFT")}</span></td>
+                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${APPROVAL_BADGE[r.approvalStatus ?? "PENDING"] || "bg-gray-100 text-gray-600"}`}>{r.approvalStatus || "PENDING"}</span></td>
                       <td className="px-4 py-3 text-xs text-gray-500">{r.certification?.code || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -394,7 +398,7 @@ export default function AuditPlanPage() {
                     <p className="font-mono font-bold text-white text-sm">{r.auditRefNo || "DRAFT"}</p>
                     <p className="text-purple-200 text-xs mt-0.5">{r.auditTitle || r.auditType}</p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status] || "bg-gray-100 text-gray-600"}`}>{statusLabel(r.status)}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status ?? "DRAFT"] || "bg-gray-100 text-gray-600"}`}>{statusLabel(r.status ?? "DRAFT")}</span>
                 </div>
               </div>
               <div className="p-4 space-y-2.5">
@@ -406,7 +410,7 @@ export default function AuditPlanPage() {
                 ))}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Approval</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${APPROVAL_BADGE[r.approvalStatus] || "bg-gray-100 text-gray-600"}`}>{r.approvalStatus || "PENDING"}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${APPROVAL_BADGE[r.approvalStatus ?? "PENDING"] || "bg-gray-100 text-gray-600"}`}>{r.approvalStatus || "PENDING"}</span>
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
                   <button onClick={() => setViewPlan(r)} className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 flex items-center justify-center gap-1"><FiEye /> View</button>
@@ -478,7 +482,7 @@ export default function AuditPlanPage() {
                     <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
                       {auditors.filter((a: Auditor) => a.status === "ACTIVE").map((a: Auditor) => (
                         <label key={a.id} className="flex items-center gap-2 px-3 py-2 hover:bg-purple-50 cursor-pointer text-sm">
-                          <input type="checkbox" checked={teamMembers.includes(a.name)} onChange={() => toggleTeam(a.name)} className="rounded accent-purple-700" />
+                          <input type="checkbox" checked={teamMembers.includes(a.name ?? "")} onChange={() => toggleTeam(a.name ?? "")} className="rounded accent-purple-700" />
                           <span>{a.name}</span>
                           {a.auditorCode && <span className="text-gray-400 text-xs">({a.auditorCode})</span>}
                         </label>
@@ -568,7 +572,7 @@ export default function AuditPlanPage() {
             <div className="px-5 py-3 bg-gray-50 border-b overflow-x-auto">
               <div className="flex items-center gap-1 min-w-max">
                 {STATUS_FLOW.map((s, i) => {
-                  const curIdx = STATUS_FLOW.indexOf(viewPlan.status);
+                  const curIdx = STATUS_FLOW.indexOf(viewPlan.status ?? "");
                   const isActive = s === viewPlan.status;
                   const isDone = i < curIdx;
                   return (

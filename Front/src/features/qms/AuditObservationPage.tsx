@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { auditApi, certApi, deptApi, clauseApi } from "../../api/qms.api";
 import type { Certification, Department, AuditPlan, AuditSchedule, AuditObservation, ClauseMaster } from "./types";
 import { apiMsg } from "./types";
 import {
   FiPlus, FiSearch, FiX, FiRefreshCw, FiChevronDown, FiChevronUp,
   FiAlertTriangle, FiCheckCircle, FiBarChart2, FiFileText,
-  FiEye, FiSave, FiThumbsUp, FiAlertCircle, FiCalendar, FiUser,
+  FiEye, FiSave,  FiAlertCircle, FiCalendar, FiUser,
   FiMapPin, FiBookOpen, FiList
 } from "react-icons/fi";
 
@@ -21,9 +21,9 @@ const FINDING_TYPES = [
 const RISK_LEVELS    = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 const SEVERITY_LEVELS = ["LOW", "MEDIUM", "HIGH"];
 
-const isNcType = (t: string) => ["NC", "NC_MINOR", "NC_MAJOR"].includes(t);
-const findingInfo = (type: string) =>
-  FINDING_TYPES.find(f => f.value === type) || { label: type, color: "bg-gray-100 text-gray-600", grad: "from-gray-500 to-gray-600" };
+const isNcType = (t?: string) => ["NC", "NC_MINOR", "NC_MAJOR"].includes(t ?? "");
+const findingInfo = (type?: string) =>
+  FINDING_TYPES.find(f => f.value === type) || { label: type || "Unknown", color: "bg-gray-100 text-gray-600", grad: "from-gray-500 to-gray-600" };
 
 interface ObsRow {
   clauseNo: string;
@@ -51,7 +51,7 @@ export default function AuditObservationPage() {
   const [plan, setPlan]       = useState<AuditPlan | null>(null);
   const [schedules, setSchedules]   = useState<AuditSchedule[]>([]);
   const [allObs, setAllObs]         = useState<AuditObservation[]>([]);
-  const [loadingObs, setLoadingObs]   = useState(false);
+  
   const [loadingSched, setLoadingSched] = useState(false);
   const [expandedSchedule, setExpandedSchedule] = useState<number | null>(null);
 
@@ -64,6 +64,7 @@ export default function AuditObservationPage() {
   const [loadingClauses, setLoadingClauses] = useState(false);
   const [newObs, setNewObs]         = useState<ObsRow[]>([]);
   const [saving, setSaving]         = useState(false);
+
 
   const [creatingNc, setCreatingNc]   = useState<number | null>(null);
   const [viewObs, setViewObs]         = useState<AuditObservation | null>(null);
@@ -101,11 +102,11 @@ export default function AuditObservationPage() {
   };
 
   const loadObs = (id: number) => {
-    setLoadingObs(true);
+    
     auditApi.getObsByPlan(id)
       .then((d: unknown) => setAllObs(Array.isArray(d) ? d as AuditObservation[] : []))
       .catch(() => setAllObs([]))
-      .finally(() => setLoadingObs(false));
+      
   };
 
   const getObsForSchedule = (sched: AuditSchedule) =>
@@ -227,7 +228,7 @@ export default function AuditObservationPage() {
     total:     allObs.length,
     positive:  allObs.filter(r => r.findingType === "POSITIVE_OBSERVATION").length,
     negative:  allObs.filter(r => r.findingType === "NEGATIVE_OBSERVATION").length,
-    nc:        allObs.filter(r => isNcType(r.findingType)).length,
+    nc:        allObs.filter(r => isNcType(r.findingType ?? "")).length,
     ofi:       allObs.filter(r => r.findingType === "OFI").length,
     schedules: schedules.length,
   };
@@ -256,7 +257,7 @@ export default function AuditObservationPage() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {displayed.map((r: AuditObservation) => {
-              const fi = findingInfo(r.findingType);
+              const fi = findingInfo(r.findingType ?? "");
               return (
                 <tr key={r.id} className="hover:bg-purple-50/30">
                   <td className="px-3 py-2 font-mono font-bold text-purple-700 whitespace-nowrap">{r.observationId || `OBS-${r.id}`}</td>
@@ -726,8 +727,8 @@ export default function AuditObservationPage() {
               </div>
               <div className="bg-gray-50 rounded-xl p-3">
                 <p className="text-xs text-gray-400 mb-1">Finding Type</p>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${findingInfo(viewObs.findingType).color}`}>
-                  {findingInfo(viewObs.findingType).label}
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${findingInfo(viewObs.findingType ?? "").color}`}>
+                  {findingInfo(viewObs.findingType ?? "").label}
                 </span>
               </div>
               <div className="bg-gray-50 rounded-xl p-3">

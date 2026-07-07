@@ -114,7 +114,11 @@ function AuditDashboard() {
 
   const upcoming = plans
     .filter(p => p.status === 'PLANNED' && p.plannedStartDate)
-    .sort((a, b) => new Date(a.plannedStartDate).getTime() - new Date(b.plannedStartDate).getTime())
+    .sort(
+ (a, b) =>
+ new Date(a.plannedStartDate ?? "").getTime() -
+ new Date(b.plannedStartDate ?? "").getTime()
+)
     .slice(0, 5);
 
   if (loading) return <div className="py-16 text-center"><i className="fas fa-spinner fa-spin text-2xl" style={{ color: BRAND }} /></div>;
@@ -216,7 +220,7 @@ function AuditDashboard() {
             <tbody className="divide-y divide-gray-100">
               {upcoming.map((p: AuditPlan) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: BRAND }}>{p.auditRefNo}</td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold" style={{ color: BRAND }}>{p.planRefNo}</td>
                   <td className="px-4 py-3 text-gray-500">{p.auditType}</td>
                   <td className="px-4 py-3">{p.leadAuditor}</td>
                   <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{p.plannedStartDate}</td>

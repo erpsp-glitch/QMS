@@ -44,7 +44,13 @@ export default function DesignationPage() {
   useEffect(() => { load(); }, []);
 
   const openAdd  = () => { setEditing(null); setForm({ ...EMPTY }); setShowModal(true); };
-  const openEdit = (r: Designation) => { setEditing(r); setForm({ ...r, department: r.department ? { id: r.department.id } : null }); setShowModal(true); };
+  const openEdit = (r: Designation) => { setEditing(r); setForm({ ...r, department: r.department
+  ? {
+      id: r.department.id,
+      code: r.department.code,
+      name: r.department.name,
+    }
+  : null }); setShowModal(true); };
 
   const bulkCreate = async () => {
     if (!depts.length) { alert("Add departments first."); return; }
@@ -107,7 +113,19 @@ export default function DesignationPage() {
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
             <i className="fas fa-magic text-xs" /> Load Defaults
           </button>
-          <button onClick={() => exportCSV(rows.map(r => ({ Name: r.name, Department: r.department?.name, Active: r.active })), "designations.csv")}
+          <button onClick={() => exportCSV(
+  "designations.csv",
+  [
+    "Name",
+    "Department",
+    "Active"
+  ],
+  rows.map(r => [
+    r.name,
+    r.department?.name,
+    r.active ? "Active" : "Inactive"
+  ])
+)}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
             <i className="fas fa-download text-xs" /> Export
           </button>
@@ -198,7 +216,19 @@ export default function DesignationPage() {
               </div>
               <div>
                 <label className={lc}>Department</label>
-                <select value={form.department?.id || ""} onChange={e => setForm(p => ({ ...p, department: e.target.value ? { id: Number(e.target.value) } : null }))} className={ic}>
+                <select
+  value={form.department?.id || ""}
+  onChange={e => {
+    const dept =
+      depts.find(d => d.id === Number(e.target.value)) || null;
+
+    setForm(p => ({
+      ...p,
+      depts: dept
+    }));
+  }}
+  className={ic}
+>
                   <option value="">— No specific department —</option>
                   {depts.map((d: Department) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>

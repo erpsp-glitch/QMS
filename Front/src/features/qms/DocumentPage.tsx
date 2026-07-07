@@ -11,7 +11,7 @@ import {
 
 const BRAND = "#280882";
 const ic = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600";
-const roIc = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-default";
+
 const lc = "block text-xs font-medium text-gray-600 mb-1";
 
 const DOC_LEVELS = [
@@ -99,13 +99,34 @@ export default function DocumentPage() {
   const openEdit = (r: Document) => {
     setEditing(r);
     setForm({
-      ...r,
-      level: r.level || r.documentLevel || "LEVEL_3",
-      documentType: r.documentType || "WI",
-      revisionDate:    r.revisionDate    || "",
-      effectiveDate:   r.effectiveDate   || "",
-      nextReviewDate:  r.nextReviewDate  || "",
-    });
+  ...r,
+
+  title: r.title ?? "",
+  documentName: r.documentName ?? "",
+  documentNumber: r.documentNumber ?? "",
+  documentType: r.documentType ?? "WI",
+  level: r.level ?? r.documentLevel ?? "LEVEL_3",
+  revisionNumber: r.revisionNumber ?? "",
+  revisionDate: r.revisionDate ?? "",
+  effectiveDate: r.effectiveDate ?? "",
+  nextReviewDate: r.nextReviewDate ?? "",
+  reviewFrequency: r.reviewFrequency ?? "",
+  owner: r.owner ?? "",
+  preparedBy: r.preparedBy ?? "",
+  preparedById: r.preparedById ?? "",
+  reviewedBy: r.reviewedBy ?? "",
+  reviewedById: r.reviewedById ?? "",
+  approvedBy: r.approvedBy ?? "",
+  approvedById: r.approvedById ?? "",
+  keywords: r.keywords ?? "",
+  changeDescription: r.changeDescription ?? "",
+  description: r.description ?? "",
+  referenceNumber: r.referenceNumber ?? "",
+  copyType: r.copyType ?? "",
+  status: r.status ?? "DRAFT",
+  certification: r.certification ?? null,
+  department: r.department ?? null,
+});
     setFile(null);
     setShowModal(true);
   };
@@ -224,11 +245,11 @@ export default function DocumentPage() {
   const today = new Date().toISOString().split("T")[0];
   const stats = {
     total:       rows.length,
-    approved:    rows.filter(r => ["APPROVED","RELEASED","ACTIVE"].includes(r.status)).length,
+    approved:    rows.filter(r => ["APPROVED","RELEASED","ACTIVE"].includes(r.status ?? "")).length,
     draft:       rows.filter(r => r.status === "DRAFT").length,
     underReview: rows.filter(r => r.status === "UNDER_REVIEW").length,
     obsolete:    rows.filter(r => r.status === "OBSOLETE").length,
-    overdue:     rows.filter(r => r.nextReviewDate && r.nextReviewDate < today && !["OBSOLETE","ARCHIVED"].includes(r.status)).length,
+    overdue:     rows.filter(r => r.nextReviewDate && r.nextReviewDate < today && !["OBSOLETE","ARCHIVED"].includes(r.status ?? "")).length,
   };
 
   return (
@@ -332,7 +353,7 @@ export default function DocumentPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((r: Document, i: number) => {
-                  const isOverdue = r.nextReviewDate && r.nextReviewDate < today && !["OBSOLETE","ARCHIVED"].includes(r.status);
+                  const isOverdue = r.nextReviewDate && r.nextReviewDate < today && !["OBSOLETE","ARCHIVED"].includes(r.status ?? "");
                   return (
                     <tr key={r.id} className="hover:bg-purple-50/30 transition-colors">
                       <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
@@ -346,9 +367,9 @@ export default function DocumentPage() {
                           {r.documentType || "—"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{levelShort(r.level || r.documentLevel)}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{levelShort(r.level || r.documentLevel || "")}</td>
                       <td className="px-4 py-3 text-center font-mono text-xs font-bold text-gray-700">Rev {r.revisionNumber}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{r.department?.departmentCode || r.department?.name || "—"}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{r.department?.code || r.department?.name || "—"}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{r.owner || "—"}</td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         {r.nextReviewDate
@@ -359,7 +380,7 @@ export default function DocumentPage() {
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status] || "bg-gray-100 text-gray-500"}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[r.status ?? ""] || "bg-gray-100 text-gray-500"}`}>
                           {r.status}
                         </span>
                       </td>
@@ -421,9 +442,9 @@ export default function DocumentPage() {
             <div className="p-6 space-y-4 text-sm">
               {/* Status Badge */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[viewing.status] || "bg-gray-100 text-gray-500"}`}>{viewing.status}</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLOR[viewing.status ?? ""] || "bg-gray-100 text-gray-500"}`}>{viewing.status}</span>
                 <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{viewing.documentType || "—"}</span>
-                <span className="text-xs text-gray-500">{levelShort(viewing.level || viewing.documentLevel)}</span>
+                <span className="text-xs text-gray-500">{levelShort(viewing.level || viewing.documentLevel || "")}</span>
               </div>
 
               {/* Core Info */}
@@ -438,7 +459,7 @@ export default function DocumentPage() {
                   ["Revision Date",    viewing.revisionDate || "—"],
                   ["Effective Date",   viewing.effectiveDate || "—"],
                   ["Next Review",      viewing.nextReviewDate || "—"],
-                  ["Department",       viewing.department?.name || viewing.department?.departmentCode || "—"],
+                  ["Department",       viewing.department?.name || "—"],
                   ["Certification",    viewing.certification?.code || viewing.certification?.name || "—"],
                   ["File",             viewing.filePath ? "Attached" : "None"],
                 ].map(([l, v]) => (
@@ -654,7 +675,7 @@ export default function DocumentPage() {
                   ].map(({ label, key }) => (
                     <div key={key}>
                       <label className={lc}>{label}</label>
-                      <select value={form[key] || ""} onChange={f(key)} className={ic}>
+                      <select value={String(form[key as keyof typeof form] ?? "")} onChange={f(key)} className={ic}>
                         <option value="">— Select Employee —</option>
                         {empNames.map(n => <option key={n} value={n}>{n}</option>)}
                       </select>

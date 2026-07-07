@@ -20,6 +20,6 @@ export const GlobalStyles = createGlobalStyle`
   h3 { ${baseTheme.typography.h3} }
 
   .MuiButton-contained {
-    ${baseTheme.components.button.contained.primary}
+    ${baseTheme.components.button.base}
   }
 `;

@@ -78,12 +78,14 @@ export default function MachineryForm({ machine, onClose, isAdd, onSubmit }: Pro
 
   const validateField = (name: string, value: string | number | undefined) => {
     const newErrors = { ...errors };
+    const stringValue = value === undefined ? "" : String(value);
+    const trimmedValue = stringValue.trim();
     
     switch (name) {
       case "machineIdentNo":
-        if (!value?.trim()) {
+        if (!trimmedValue) {
           newErrors.machineIdentNo = "Machine Ident No is required";
-        } else if (value.length < 2) {
+        } else if (trimmedValue.length < 2) {
           newErrors.machineIdentNo = "Ident No must be at least 2 characters";
         } else {
           delete newErrors.machineIdentNo;
@@ -91,9 +93,9 @@ export default function MachineryForm({ machine, onClose, isAdd, onSubmit }: Pro
         break;
         
       case "machineName":
-        if (!value?.trim()) {
+        if (!trimmedValue) {
           newErrors.machineName = "Machine Name is required";
-        } else if (value.length < 3) {
+        } else if (trimmedValue.length < 3) {
           newErrors.machineName = "Name must be at least 3 characters";
         } else {
           delete newErrors.machineName;
@@ -101,8 +103,8 @@ export default function MachineryForm({ machine, onClose, isAdd, onSubmit }: Pro
         break;
         
       case "yearOfInstallation":
-        if (value) {
-          const numValue = parseInt(value, 10);
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+          const numValue = parseInt(stringValue, 10);
           const currentYear = new Date().getFullYear();
           if (isNaN(numValue) || numValue < 1900 || numValue > currentYear + 1) {
             newErrors.yearOfInstallation = `Year must be between 1900 and ${currentYear + 1}`;

@@ -537,13 +537,12 @@ import type { Certification } from '../qms/types';
 import {
   FiAward, FiHome, FiUsers, FiShield, FiFolder, FiTrendingUp,
   FiClock, FiCheckCircle, FiAlertCircle, FiAlertTriangle, FiCalendar,
-  FiBarChart2, FiActivity, FiStar, FiUserCheck,
-  FiBriefcase, FiBookOpen, FiLayers, FiHash, FiExternalLink,
-  FiPlus, FiRefreshCw, FiChevronRight, FiSearch, FiDatabase,
-  FiFileText, FiUser, FiSettings, FiBox
+  FiBarChart2, FiActivity,
+  FiBriefcase, 
+  FiPlus, FiRefreshCw, FiChevronRight, FiSearch 
 } from 'react-icons/fi';
 
-const BRAND = '#280882';
+
 
 export default function MasterDashboard() {
   const [counts, setCounts] = useState({

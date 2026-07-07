@@ -350,13 +350,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
   };
 
   // Check if a date has an event
-  const hasEvent = (date: Date) => {
-    return events.some(event => 
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
-    );
-  };
+ 
 
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
@@ -441,7 +435,6 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = 0; i < startingDay; i++) {
       const day = prevMonthLastDay - startingDay + i + 1;
-      const date = new Date(year, month - 1, day);
       days.push(
         <div key={`prev-${i}`} className="text-center text-gray-400 py-2">
           {day}
@@ -483,7 +476,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({
     const totalCells = 42; // 6 weeks of 7 days
     const remainingCells = totalCells - days.length;
     for (let i = 1; i <= remainingCells; i++) {
-      const date = new Date(year, month + 1, i);
+      
       days.push(
         <div key={`next-${i}`} className="text-center text-gray-400 py-2">
           {i}

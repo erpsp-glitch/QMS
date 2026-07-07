@@ -1155,18 +1155,17 @@ import type { DocumentIssue, Certification, Document, Employee, Department } fro
 import { apiMsg } from '../qms/types';
 import {
   FiPlus, FiSearch, FiEdit, FiTrash2, FiX, FiRefreshCw,
-  FiChevronDown, FiChevronUp, FiDownload, FiPrinter,
+  FiDownload, FiPrinter,
   FiAlertTriangle, FiCheckCircle, FiFileText, FiBarChart2,
-  FiClock, FiAlertCircle, FiEye, FiGrid, FiList, FiFilter,
-  FiHome, FiBookOpen, FiPieChart, FiTrendingUp, FiAward,
-  FiSettings, FiUser, FiCalendar, FiTag, FiClipboard,
-  FiLayers, FiStar, FiBell, FiHeart, FiCopy, FiSend,
+  FiClock, FiAlertCircle, FiEye, FiGrid, FiList,  FiBookOpen, FiPieChart, FiAward,
+  FiUser,FiClipboard,
+  FiLayers, FiStar, FiCopy, FiSend,
   FiCheck, FiArrowRight, FiArrowLeft, FiRefreshCcw,
-  FiExternalLink, FiPackage, FiUsers, FiBriefcase,
+   FiPackage, 
   FiArchive
 } from 'react-icons/fi';
 
-const BRAND = '#280882';
+
 
 const COPY_TYPES = ['Master Copy', 'Controlled Copy', 'Uncontrolled Copy', 'Reference Copy', 'Obsolete Copy'];
 const ISSUE_STATUSES = ['ISSUED', 'RETURNED', 'OVERDUE', 'CANCELLED'];
@@ -1538,7 +1537,7 @@ function DocIssueDashboard({ onNew }: { onNew: () => void }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {recentIssues.map((r: DocumentIssue) => {
-                  const st = ST_COLOR[r.status] || ST_COLOR.ISSUED;
+                 const st = ST_COLOR[r.status ?? "ISSUED"] || ST_COLOR.ISSUED;
                   const ack = ACK_COLOR[r.acknowledgementStatus || 'PENDING'] || ACK_COLOR.PENDING;
                   return (
                     <tr key={r.id} className="hover:bg-purple-50/30 transition-colors group">
@@ -1620,7 +1619,7 @@ function NewDocIssueForm({ onSaved }: { onSaved: () => void }) {
       return;
     }
     const cert = certs.find(c => String(c.id) === certId);
-    setSelCert(cert);
+    setSelCert(cert ?? null);
     setForm(p => ({
       ...p,
       certificationId: cert?.id ?? null,
@@ -1643,15 +1642,15 @@ function NewDocIssueForm({ onSaved }: { onSaved: () => void }) {
       return;
     }
     const doc = docs.find(d => String(d.id) === docId);
-    setSelDoc(doc);
+    setSelDoc(doc ?? null);
     const deptId = doc?.department?.id ?? null;
-    const deptName = depts.find(d => d.id === deptId)?.name || doc?.department?.name || doc?.departmentName || '';
+    const deptName = depts.find(d => d.id === deptId)?.name || doc?.department?.name || doc?.department?.name || '';
     setForm(p => ({
       ...p,
       documentId: doc?.id ?? null,
-      documentNumber: doc?.documentNumber || doc?.docNumber || '',
-      documentName: doc?.documentName || doc?.name || '',
-      referenceNumber: doc?.referenceNumber || doc?.refNumber || '',
+      documentNumber: doc?.documentNumber || doc?.documentNumber || '',
+      documentName: doc?.documentName || doc?.documentName  || '',
+      referenceNumber: doc?.referenceNumber || doc?.referenceNumber || '',
       revisionNumber: doc?.revisionNumber || doc?.revision || '',
       revisionDate: doc?.revisionDate || '',
       department: deptName,
@@ -1668,14 +1667,14 @@ function NewDocIssueForm({ onSaved }: { onSaved: () => void }) {
       return;
     }
     const emp = emps.find(e => String(e.id) === empId);
-    setSelEmp(emp);
-    const empDeptName = depts.find(d => d.id === emp?.department?.id)?.name || emp?.department?.name || emp?.departmentName || '';
+    setSelEmp(emp ?? null);
+    const empDeptName = depts.find(d => d.id === emp?.department?.id)?.name || emp?.department?.name || emp?.department?.name || '';
     const empFullName = `${emp?.firstName || ''} ${emp?.lastName || ''}`.trim();
     setForm(p => ({
       ...p,
       employeeId: emp?.id ?? null,
-      issueToEmployee: empFullName || emp?.name || emp?.fullName || '',
-      employeeCode: emp?.employeeId || emp?.employeeCode || emp?.code || '',
+      issueToEmployee: empFullName || `${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`.trim() || `${emp?.firstName ?? ""} ${emp?.lastName ?? ""}`.trim() || '',
+      employeeCode: emp?.employeeId || emp?.employeeId || emp?.employeeId || '',
       employeeDepartment: empDeptName,
       designation: emp?.designation || '',
     }));
@@ -1813,7 +1812,7 @@ function NewDocIssueForm({ onSaved }: { onSaved: () => void }) {
                 >
                   <option value="">— Select Document —</option>
                   {docs.filter((d: Document) => d.status === 'APPROVED' || !d.status).map((d: Document) => (
-                    <option key={d.id} value={d.id}>{d.documentNumber || d.docNumber} — {d.documentName || d.name}</option>
+                    <option key={d.id} value={d.id}>{d.documentNumber || d.documentNumber} —  {d.documentNumber} — {d.documentName || ""}</option>
                   ))}
                 </select>
               </div>
@@ -1892,7 +1891,8 @@ function NewDocIssueForm({ onSaved }: { onSaved: () => void }) {
                 >
                   <option value="">— Select Employee —</option>
                   {emps.map((e: Employee) => {
-                    const n = `${e.firstName || ''} ${e.lastName || ''}`.trim() || e.name || e.fullName || '—';
+                    const n =
+`${e.firstName ?? ""} ${e.lastName ?? ""}`.trim() || "—";
                     return <option key={e.id} value={e.id}>{n}{e.employeeId ? ` (${e.employeeId})` : ''}</option>;
                   })}
                 </select>
@@ -2190,7 +2190,7 @@ function DocIssueList() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {displayed.map((r: DocumentIssue) => {
-                    const st = ST_COLOR[r.status] || ST_COLOR.ISSUED;
+                   const st = ST_COLOR[r.status ?? "ISSUED"] || ST_COLOR.ISSUED;
                     const ack = ACK_COLOR[r.acknowledgementStatus || 'PENDING'] || ACK_COLOR.PENDING;
                     return (
                       <tr key={r.id} className="hover:bg-purple-50/30 transition-colors group">
@@ -2261,7 +2261,7 @@ function DocIssueList() {
       {viewMode === 'grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {displayed.map((r: DocumentIssue) => {
-            const st = ST_COLOR[r.status] || ST_COLOR.ISSUED;
+           const st = ST_COLOR[r.status ?? "ISSUED"] || ST_COLOR.ISSUED;
             const ack = ACK_COLOR[r.acknowledgementStatus || 'PENDING'] || ACK_COLOR.PENDING;
             const Icon = COPY_TYPE_ICONS[rCopyType(r)] || FiFileText;
             return (
@@ -2356,7 +2356,7 @@ function DocIssueList() {
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Status</p>
                   <div className="flex gap-2 mt-1">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${ST_COLOR[viewingIssue.status]?.bg || 'bg-slate-100'} ${ST_COLOR[viewingIssue.status]?.text || 'text-slate-600'} border ${ST_COLOR[viewingIssue.status]?.border || 'border-slate-200'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${ST_COLOR[viewingIssue.status ?? "ISSUED"]?.bg || 'bg-slate-100'} ${ST_COLOR[viewingIssue.status ?? "ISSUED"]?.text || 'text-slate-600'} border ${ST_COLOR[viewingIssue.status ?? "ISSUED"]?.border || 'border-slate-200'}`}>
                       {viewingIssue.status}
                     </span>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${ACK_COLOR[viewingIssue.acknowledgementStatus || 'PENDING']?.bg || 'bg-amber-50'} ${ACK_COLOR[viewingIssue.acknowledgementStatus || 'PENDING']?.text || 'text-amber-700'} border ${ACK_COLOR[viewingIssue.acknowledgementStatus || 'PENDING']?.border || 'border-amber-200'}`}>
@@ -2504,22 +2504,53 @@ function DocIssueReport() {
     setLoading(true);
     try {
       const data = (await docIssueApi.getAll() as unknown as DocumentIssue[]);
-      exportCSV('Document_Issue_Register.csv',
-        ['Issue ID', 'Cert Name', 'Cert No.', 'Doc Number', 'Doc Name', 'Ref No.', 'Rev No.', 'Revision Date', 'Department', 'Copy Type', 'Copy No.', 'Issued To', 'Emp Code', 'Emp Dept', 'Designation', 'Issue Date', 'Return Date', 'Ack Status', 'Status', 'Remarks'],
-        data.map(r => [
-          r.issueId || `DI-${r.id}`,
-          r.certification?.name || r.certificationName,
-          r.certification?.code || r.certificationNumber,
-          rDocNum(r), rDocName(r),
-          r.document?.referenceNumber || r.referenceNumber,
-          r.revisionNumber,
-          r.document?.revisionDate || r.revisionDate,
-          rDeptName(r), rCopyType(r), r.copyNumber, rIssuedTo(r),
-          r.employeeCode, r.employeeDepartment, r.designation,
-          r.issueDate, r.returnDate,
-          r.acknowledgementStatus || 'PENDING', r.status, r.remarks,
-        ])
-      );
+    exportCSV(
+  "Document_Issue_Register.csv",
+  [
+    "Issue ID",
+    "Cert Name",
+    "Cert No.",
+    "Doc Number",
+    "Doc Name",
+    "Ref No.",
+    "Rev No.",
+    "Revision Date",
+    "Department",
+    "Copy Type",
+    "Copy No.",
+    "Issued To",
+    "Emp Code",
+    "Emp Dept",
+    "Designation",
+    "Issue Date",
+    "Return Date",
+    "Ack Status",
+    "Status",
+    "Remarks"
+  ],
+  data.map(r => [
+    r.issueId || `DI-${r.id}`,
+    r.certification?.name || r.certificationName,
+    r.certification?.code || r.certificationNumber,
+    rDocNum(r),
+    rDocName(r),
+    r.referenceNumber,
+    r.revisionNumber,
+    r.revisionDate,
+    rDeptName(r),
+    rCopyType(r),
+    r.copyNumber,
+    rIssuedTo(r),
+    r.employeeCode,
+    r.employeeDepartment,
+    r.designation,
+    r.issueDate,
+    r.returnDate,
+    r.acknowledgementStatus || "PENDING",
+    r.status,
+    r.remarks
+  ])
+);
     } catch { alert('Failed to generate report.'); }
     finally { setLoading(false); }
   };
@@ -2592,7 +2623,7 @@ function DocIssueReport() {
                   <td>${rDeptName(r)}</td>
                   <td>${r.issueDate || '—'}</td>
                   <td>${r.returnDate || '—'}</td>
-                  <td><span class="badge ${statusMap[r.status] || 'badge-issued'}">${r.status}</span></td>
+                  <td><span class="badge ${statusMap[r.status ?? "ISSUED"] || 'badge-issued'}">${r.status}</span></td>
                   <td><span class="badge ${ackClass}">${r.acknowledgementStatus || 'PENDING'}</span></td>
                 </tr>`;
               }).join('')}
@@ -2691,7 +2722,7 @@ function DocIssueReport() {
                 ['Uncontrolled Copy', 'Temporary / Training Use', 'No Revision Update', 'Temporary Holder'],
                 ['Reference Copy', 'Read-Only Reference', 'No Update', 'Reference Library'],
                 ['Obsolete Copy', 'Superseded Revision', 'Archive Only', 'Document Controller (Archive)'],
-              ].map(([type, purpose, control, holder], idx) => {
+              ].map(([type, purpose, control, holder]) => {
                 const Icon = COPY_TYPE_ICONS[type] || FiFileText;
                 return (
                   <tr key={type} className="hover:bg-purple-50/30 transition-colors">

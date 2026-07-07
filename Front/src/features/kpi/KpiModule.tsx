@@ -407,7 +407,12 @@ function KpiReview() {
                 const achPct = actual != null && target ? ((Number(actual) / target) * 100).toFixed(1) : null;
                 const variance = actual != null && target != null ? (Number(actual) - target) : null;
                 const status = getStatus(entry, m);
-                const trend = entry?.trend || (actual != null && target != null ? (Number(actual) >= target ? '↑' : '↓') : '—');
+                const trend =
+actual!=null && target!=null
+? Number(actual)>=Number(target)
+?'↑'
+:'↓'
+:'—';
                 return (
                   <tr key={m.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: BRAND }}>{m.kpiCode}</td>
@@ -455,9 +460,15 @@ function calcFailStatus(entry: KpiEntry | null | undefined, master: KpiMaster | 
   if (!entry || entry.actualValue == null) return false;
   const actual = Number(entry.actualValue);
   const target = Number(master?.targetValue ?? 0);
-  if (!target) return false;
-  if (master.direction === 'LOWER_IS_BETTER') return actual > target;
-  return actual < target;
+  if (!master) {
+   return false;
+}
+
+if (master.direction === "LOWER_IS_BETTER") {
+   return actual > target;
+}
+
+return actual < target;
 }
 
 function KpiCapa() {
@@ -497,7 +508,7 @@ function KpiCapa() {
       const eArr: KpiEntry[] = Array.isArray(e) ? e as KpiEntry[] : [];
       setEntries(eArr);
       const mastersByCert = masters.filter(m =>
-        m.certification?.id === certId || m.certificationId === certId
+        m.certification?.id === certId
       );
       const failed = mastersByCert.filter(m => {
         const entry = eArr.find((en: KpiEntry) => en.kpiMaster?.id === m.id);
@@ -579,7 +590,7 @@ function KpiCapa() {
       <p>Generated: ${new Date().toLocaleDateString('en-IN')} | Total Actions: ${actions.length}</p>
       <table>
         <thead><tr><th>KPI Code</th><th>KPI Name</th><th>Root Cause</th><th>Action Plan</th><th>Responsible</th><th>Target Date</th><th>Priority</th><th>Status</th></tr></thead>
-        <tbody>${actions.map(a => `<tr><td>${a.kpiCode||''}</td><td>${a.kpiLabel || a.kpiObjective || a.title || '—'}</td><td>${a.rootCause||'—'}</td><td>${a.actionPlan}</td><td>${a.responsiblePerson||'—'}</td><td>${a.targetDate||'—'}</td><td>${a.priority}</td><td>${a.status}</td></tr>`).join('')}</tbody>
+        <tbody>${actions.map(a => `<tr><td>${a.kpiCode||''}</td><td>${a.kpiLabel || '—'}</td><td>${a.rootCause||'—'}</td><td>${a.actionPlan}</td><td>${a.responsiblePerson||'—'}</td><td>${a.targetDate||'—'}</td><td>${a.priority}</td><td>${a.status}</td></tr>`).join('')}</tbody>
       </table>
       </body></html>
     `);
@@ -762,7 +773,7 @@ function KpiCapa() {
               {actions.map((a: CapaAction) => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: BRAND }}>{a.kpiCode || '—'}</td>
-                  <td className="px-4 py-3 font-medium text-gray-800 max-w-[140px] truncate">{a.kpiLabel || a.kpiObjective || a.title || '—'}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800 max-w-[140px] truncate">{a.kpiLabel || '—'}</td>
                   <td className="px-4 py-3 text-gray-500 max-w-[140px] truncate text-xs">{a.rootCause || '—'}</td>
                   <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate text-xs">{a.actionPlan}</td>
                   <td className="px-4 py-3 text-gray-600">{a.responsiblePerson || '—'}</td>
@@ -833,13 +844,13 @@ function KpiAnalytics() {
   // Dept-wise KPI count
   const deptKpiCount = depts.map(d => ({
     name: d.name,
-    count: masters.filter(m => m.department?.id === d.id || m.departmentId === d.id).length,
+    count: masters.filter(m => m.department?.id === d.id).length,
   })).filter(d => d.count > 0);
 
   // Cert-wise KPI count
   const certKpiCount = certs.map(c => ({
     name: c.code || c.name,
-    count: masters.filter(m => m.certification?.id === c.id || m.certificationId === c.id).length,
+    count: masters.filter(m => m.certification?.id === c.id).length,
   })).filter(c => c.count > 0);
 
   // Type distribution
@@ -958,8 +969,10 @@ function KpiAnalytics() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {masters.map((m: KpiMaster) => {
-                const cert = certs.find(c => c.id === (m.certification?.id || m.certificationId));
-                const dept = depts.find(d => d.id === (m.department?.id || m.departmentId));
+                const cert =
+certs.find(c=>c.id===m.certification?.id);
+                const dept =
+depts.find(d=>d.id===m.department?.id);
                 return (
                   <tr key={m.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5 font-mono text-xs font-bold" style={{ color: BRAND }}>{m.kpiCode}</td>
@@ -989,18 +1002,29 @@ function KpiReports() {
     setLoading(true);
     try {
       const masters = (await kpiApi.getMasters() as unknown) as KpiMaster[];
-      exportCSV(
-        masters.map(m => ({
-          'KPI Code': m.kpiCode,
-          'KPI Name': m.kpiObjective || m.title,
-          'Type': m.kpiType,
-          'Frequency': m.frequency,
-          'Target': m.targetValue,
-          'Unit': m.unit,
-          'Description': m.objective || '',
-        })),
-        'KPI_Master_Report.csv'
-      );
+     exportCSV(
+  "KPI_Master_Report.csv",
+
+  [
+    "KPI Code",
+    "KPI Name",
+    "Type",
+    "Frequency",
+    "Target",
+    "Unit",
+    "Description"
+  ],
+
+  masters.map(m => [
+    m.kpiCode,
+    m.kpiObjective || m.title,
+    m.kpiType,
+    m.frequency,
+    m.targetValue,
+    m.unit,
+    m.objective || ""
+  ])
+);
     } catch { alert('Failed to generate report.'); }
     finally { setLoading(false); }
   };
@@ -1033,17 +1057,31 @@ function KpiReports() {
     const actions: CapaAction[] = saved ? JSON.parse(saved) : [];
     if (actions.length === 0) { alert('No CAR records found.'); return; }
     exportCSV(
-      actions.map(a => ({
-        'KPI Code': a.kpiCode || '',
-        'KPI Name': a.kpiLabel || a.kpiObjective || a.title || '—',
-        'Root Cause': a.rootCause || '',
-        'Action Plan': a.actionPlan,
-        'Responsible': a.responsiblePerson || '',
-        'Target Date': a.targetDate || '',
-        'Priority': a.priority,
-        'Status': a.status,
-      })),
-      'KPI_CAR_Report.csv'
+      "KPI_CAPA_Report.csv",
+      [
+        "KPI Code",
+        "KPI Name",
+        "Root Cause",
+        "Action Plan",
+        "Responsible Person",
+        "Target Date",
+        "Priority",
+        "Status",
+        "Remarks",
+        "Created At"
+      ],
+      actions.map(a => [
+        a.kpiCode,
+        a.kpiName,
+        a.rootCause,
+        a.actionPlan,
+        a.responsiblePerson,
+        a.targetDate,
+        a.priority,
+        a.status,
+        a.remarks,
+        a.createdAt || ""
+      ])
     );
   };
 

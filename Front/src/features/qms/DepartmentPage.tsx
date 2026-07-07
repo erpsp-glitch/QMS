@@ -440,16 +440,29 @@ export default function DepartmentPage() {
             <p className="text-gray-500 mt-1 text-sm">Manage organization departments</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => exportCSV(rows.map(r => ({ 
-              "Department ID": r.departmentId || "",
-              Code: r.departmentCode, 
-              Name: r.name, 
-              Head: r.departmentHead, 
-              Email: r.email, 
-              Phone: r.phone, 
-              Location: r.location, 
-              Status: r.active ? "Active" : "Inactive" 
-            })), "departments.csv")}
+            <button onClick={() => exportCSV(
+  "departments.csv",
+  [
+    "Department ID",
+    "Code",
+    "Name",
+    "Head",
+    "Email",
+    "Phone",
+    "Location",
+    "Status"
+  ],
+  rows.map(r => [
+    r.departmentId || "",
+    r.departmentCode,
+    r.name,
+    r.departmentHead,
+    r.email,
+    r.phone,
+    r.location,
+    r.active ? "Active" : "Inactive"
+  ])
+)}
               className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm flex items-center gap-2">
               <FiDownload /> Export
             </button>

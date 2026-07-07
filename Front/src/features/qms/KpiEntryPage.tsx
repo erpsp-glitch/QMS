@@ -12,7 +12,7 @@ const MONTH_LABELS: Record<string, string> = {
   JUL:"July",AUG:"August",SEP:"September",OCT:"October",NOV:"November",DEC:"December"
 };
 
-function calcStatus(actual: number, target: number, direction: string, warn?: number, crit?: number): "ACHIEVED" | "WARNING" | "FAILED" | "NOT_UPDATED" {
+function calcStatus(actual: number, target: number, direction: string, warn?: number): "ACHIEVED" | "WARNING" | "FAILED" | "NOT_UPDATED" {
   if (actual === undefined || actual === null) return "NOT_UPDATED";
   if (direction === "LOWER_IS_BETTER") {
     if (actual <= target) return "ACHIEVED";
@@ -104,8 +104,8 @@ export default function KpiEntryPage() {
   const previewStatus = (master: KpiMaster, actualStr: string) => {
     const actual = parseFloat(actualStr);
     if (isNaN(actual)) return "NOT_UPDATED";
-    return calcStatus(actual, master.targetValue, master.direction || "HIGHER_IS_BETTER",
-      master.warningLimit, master.criticalLimit);
+    return calcStatus(actual, Number(master.targetValue ?? 0), master.direction || "HIGHER_IS_BETTER",
+      Number(master.warningLimit ?? 0));
   };
 
   const saveEntry = async (masterId: number) => {
@@ -154,9 +154,9 @@ export default function KpiEntryPage() {
   };
 
   const achieved  = masters.filter(m => (entryMap[m.id]?.status === "ACHIEVED")).length;
-  const warning   = masters.filter(m => ["WARNING","PENDING"].includes(entryMap[m.id]?.status)).length;
-  const failed    = masters.filter(m => ["FAILED","BELOW_TARGET"].includes(entryMap[m.id]?.status)).length;
-  const notDone   = masters.length - achieved - warning - failed;
+  const warning   = masters.filter(m => ["WARNING","PENDING"].includes(entryMap[m.id]?.status ?? "")).length;
+  const failed    = masters.filter(m => ["FAILED","BELOW_TARGET"].includes(entryMap[m.id]?.status ?? "")).length;
+  
 
   return (
     <div className="space-y-4">
@@ -241,7 +241,11 @@ export default function KpiEntryPage() {
                 const actStr  = actuals[m.id] ?? "";
                 const preview = actStr !== "" ? previewStatus(m, actStr) : (entry?.status || "NOT_UPDATED");
                 const ach     = actStr && m.targetValue
-                  ? calcAchievement(parseFloat(actStr), m.targetValue, m.direction || "HIGHER_IS_BETTER")
+                  ? calcAchievement(
+parseFloat(actStr),
+Number(m.targetValue ?? 0),
+m.direction || "HIGHER_IS_BETTER"
+)
                   : (entry?.achievementPercent || null);
                 return (
                   <tr key={m.id} className={`${preview === "ACHIEVED" ? "bg-green-50/20" : preview === "WARNING" ? "bg-yellow-50/20" : preview === "FAILED" ? "bg-red-50/20" : ""} hover:opacity-90`}>
@@ -302,7 +306,7 @@ export default function KpiEntryPage() {
                 {failed} KPI{failed > 1 ? "s" : ""} Failed — Corrective Action Required
               </div>
               <div className="space-y-1">
-                {masters.filter(m => ["FAILED","BELOW_TARGET"].includes(entryMap[m.id]?.status)).map(m => (
+                {masters.filter(m => ["FAILED","BELOW_TARGET"].includes(entryMap[m.id]?.status ?? "")).map(m => (
                   <div key={m.id} className="text-xs text-red-600 flex items-center gap-2">
                     <span className="font-mono font-semibold">{m.kpiCode}</span>
                     <span>{m.kpiObjective || m.title}</span>

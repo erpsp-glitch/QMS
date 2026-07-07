@@ -155,10 +155,43 @@ export default function CertificationPage() {
               placeholder="Search certifications..." className="border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600 w-56" />
             <i className="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs" />
           </div>
-          <button onClick={() => exportCSV(rows, "certifications.csv")}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-            <i className="fas fa-download text-xs" /> Export
-          </button>
+          <button
+  onClick={() =>
+    exportCSV(
+      "certifications.csv",
+      [
+        "Code",
+        "Name",
+        "Standard Name",
+        "Standard Version",
+        "Standard Type",
+        "Industry Sector",
+        "Certification Body",
+        "Certificate Number",
+        "Issue Date",
+        "Expiry Date",
+        "Status"
+      ],
+      rows.map(r => [
+        r.code,
+        r.name,
+        r.standardName,
+        r.standardVersion,
+        r.standardType,
+        r.industrySector,
+        r.certificationBody,
+        r.certificateNumber,
+        r.issueDate,
+        r.expiryDate,
+        r.status
+      ])
+    )
+  }
+  className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50"
+>
+  <i className="fas fa-download text-xs" />
+  Export
+</button>
           <button onClick={openAdd}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-semibold"
             style={{ background: BRAND }}>
@@ -193,10 +226,10 @@ export default function CertificationPage() {
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">{r.certificateNumber || "—"}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(r.issueDate)}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                    {formatDate(r.expiryDate)}{expiryTag(r.expiryDate)}
+                    {formatDate(r.expiryDate)}{expiryTag(r.expiryDate ?? "")}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(r.status)}`}>{r.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(r.status ?? "ACTIVE")}`}>{r.status ?? "ACTIVE"}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">

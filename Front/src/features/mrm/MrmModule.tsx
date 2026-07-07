@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { mrmApi, certApi, kpiApi, auditApi, kpiReviewApi, auditReviewApi, prpApi, prsApi, actionTrackerApi, deptApi } from '../../api/qms.api';
+import { mrmApi, certApi, kpiApi, auditApi,  prpApi, prsApi, actionTrackerApi, deptApi } from '../../api/qms.api';
 import { exportCSV } from '../master-data/chartUtils';
 import { FiAlertTriangle, FiTrash2, FiCheck, FiX as FiXIcon } from 'react-icons/fi';
-import type { MrmPlan, MrmMinutes as MrmMinutesType, MrmAgenda, KpiMaster, Certification, AuditPlan, NC, CertRef, KpiReview, KpiReviewItem, InternalAuditReview, ProcessReviewPlan as PRP, ProcessReviewSheet as PRS, ReviewChecklistItem, ActionTracker as AT, Department } from '../qms/types';
+import type { MrmPlan, MrmMinutes as MrmMinutesType, MrmAgenda, KpiMaster, Certification, AuditPlan, NC, CertRef, ProcessReviewPlan as PRP, ProcessReviewSheet as PRS, ReviewChecklistItem, ActionTracker as AT, Department } from '../qms/types';
 import { apiMsg } from '../qms/types';
 
 const BRAND = '#280882';
@@ -135,7 +135,11 @@ function MrmDashboard({ onNavigate, certId }: { onNavigate: (tab: string) => voi
 
   const upcoming = [...plans]
     .filter(p => p.status === 'PLANNED' && p.meetingDate)
-    .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
+    .sort((a,b)=>
+new Date(a.meetingDate ?? "").getTime()
+-
+new Date(b.meetingDate ?? "").getTime()
+)
     .slice(0, 5);
 
   if (loading) return <div className="py-16 text-center"><i className="fas fa-spinner fa-spin text-2xl" style={{ color: BRAND }} /></div>;
@@ -428,7 +432,7 @@ function MrmPlans({ certId }: { certId: number | null }) {
                   <td className="px-4 py-3 text-gray-600">{p.mrRepresentative || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{p.coordinator || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ST_BADGE[p.status] || ''}`}>{p.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ST_BADGE[p.status ?? "OPEN"] || ''}`}>{p.status}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1919,7 +1923,10 @@ function MrmKpiReview({ certId }: { certId: number | null }) {
 
   const COLORS = [BRAND, '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6'];
   const freqGroups: Record<string, number> = {};
-  masters.forEach(m => { freqGroups[m.frequency] = (freqGroups[m.frequency] || 0) + 1; });
+  masters.forEach(m => {
+    const key = m.frequency ?? '—';
+    freqGroups[key] = (freqGroups[key] || 0) + 1;
+  });
 
   const printKpiReview = () => {
     const w = window.open('', '_blank');

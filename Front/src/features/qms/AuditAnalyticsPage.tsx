@@ -51,7 +51,7 @@ export default function AuditAnalyticsPage() {
   // ── Derived ────────────────────────────────────────────────────────────────
   const planStats = {
     total: plans.length,
-    completed: plans.filter(p => ["COMPLETED", "CLOSED"].includes(p.status)).length,
+    completed: plans.filter(p => ["COMPLETED", "CLOSED"].includes(p.status ?? "")).length,
     inProgress: plans.filter(p => p.status === "IN_PROGRESS").length,
     planned: plans.filter(p => p.status === "PLANNED").length,
     cancelled: plans.filter(p => p.status === "CANCELLED").length,
@@ -105,7 +105,11 @@ export default function AuditAnalyticsPage() {
   const QUESTIONS = ["auditorKnowledge","technicalCompetency","auditCoverage","auditorQualities","employeeInteraction","clarityInCommunication","timeManagement","consistencyApproach","queryResponse","observationComments"];
   feedbacks.forEach(fb => {
     const name = fb.auditorName || "Unknown";
-    const avg = QUESTIONS.reduce((s, k) => s + (fb[k] || 0), 0) / QUESTIONS.length;
+    const avg = QUESTIONS.reduce((s, k) => {
+      const value = fb[k as keyof AuditFeedback];
+      const score = typeof value === "number" ? value : 0;
+      return s + score;
+    }, 0) / QUESTIONS.length;
     if (!auditorScores[name]) auditorScores[name] = { total: 0, count: 0 };
     auditorScores[name].total += avg;
     auditorScores[name].count += 1;

@@ -3,10 +3,10 @@ import { auditApi, certApi, downloadBlob } from "../../api/qms.api";
 import type { Certification, AuditPlan, AuditObservation, NC, InputChg } from "./types";
 import { apiMsg } from "./types";
 import {
-  FiPlus, FiSearch, FiEdit, FiX, FiAlertCircle, FiRefreshCw, FiFilter,
+  FiPlus, FiSearch, FiEdit, FiX, FiAlertCircle, FiRefreshCw, 
   FiChevronDown, FiChevronUp, FiDownload, FiAlertTriangle,
-  FiCheckCircle, FiFileText, FiBarChart2, FiShield, FiClock,
-  FiUser, FiEye, FiGrid, FiList
+  FiCheckCircle, FiFileText, FiShield, FiClock,
+  FiEye, FiGrid, FiList
 } from "react-icons/fi";
 
 const NC_STATUSES = ["OPEN","CONTAINMENT_DONE","ROOT_CAUSE_SUBMITTED","ACTION_INITIATED","PENDING_VERIFICATION","VERIFIED","CLOSED"];
@@ -143,7 +143,7 @@ export default function NcTrackingPage() {
     }
     if (sortConfig) {
       r = [...r].sort((a, b) => {
-        const av = a[sortConfig.key], bv = b[sortConfig.key];
+        const av = a[sortConfig.key as keyof NC], bv = b[sortConfig.key as keyof NC];
         if (av == null) return 1; if (bv == null) return -1;
         return sortConfig.dir === "asc" ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1);
       });
@@ -181,7 +181,7 @@ export default function NcTrackingPage() {
   const stats = {
     total: filtered.length,
     open: filtered.filter(r => r.status === "OPEN").length,
-    inProgress: filtered.filter(r => ["ACTION_INITIATED","PENDING_VERIFICATION"].includes(r.status)).length,
+    inProgress: filtered.filter(r => ["ACTION_INITIATED","PENDING_VERIFICATION"].includes(r.status ?? "")).length,
     verified: filtered.filter(r => r.status === "VERIFIED").length,
     closed: filtered.filter(r => r.status === "CLOSED").length,
     major: filtered.filter(r => r.ncType === "MAJOR").length,
@@ -309,7 +309,7 @@ export default function NcTrackingPage() {
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.targetDate || "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status] || "bg-gray-100 text-gray-600"}`}>{(r.status || "").replace(/_/g, " ")}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_BADGE[r.status ?? ""] || "bg-gray-100 text-gray-600"}`}>{(r.status || "").replace(/_/g, " ")}</span>
                           {r.priority && <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${r.priority === "CRITICAL" ? "bg-red-200 text-red-800" : r.priority === "HIGH" ? "bg-red-50 text-red-600" : r.priority === "LOW" ? "bg-green-50 text-green-600" : "bg-yellow-50 text-yellow-600"}`}>{r.priority}</span>}
                         </div>
                       </td>
@@ -366,7 +366,7 @@ export default function NcTrackingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((r: NC) => (
             <div key={r.id} className="bg-white rounded-2xl shadow-lg border border-red-100 hover:shadow-xl transition-all">
-              <div className={`bg-gradient-to-r ${STATUS_GRAD[r.status] || "from-gray-500 to-gray-600"} p-4 rounded-t-2xl`}>
+              <div className={`bg-gradient-to-r ${STATUS_GRAD[r.status ?? ""] || "from-gray-500 to-gray-600"} p-4 rounded-t-2xl`}>
                 <div className="flex justify-between items-start">
                   <p className="font-mono font-bold text-white text-sm">{r.ncNumber}</p>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold bg-white/20 text-white`}>{r.ncType}</span>

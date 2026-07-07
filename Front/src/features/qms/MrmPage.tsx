@@ -355,7 +355,7 @@ function MinutesTab({ planId, minutes, reload }: { planId: number; minutes: any[
                   onChange={(e) => updateStatus(m.id, e.target.value)}
                   className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none"
                 >
-                  {["OPEN", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map(s => <option key={s}>{s}</option>)}
+                  {MIN_STATUSES.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
             </div>

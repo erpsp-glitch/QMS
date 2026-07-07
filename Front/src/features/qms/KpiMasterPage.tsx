@@ -5,7 +5,7 @@ import { apiMsg } from "./types";
 import { exportCSV } from "../master-data/chartUtils";
 import { FiAlertTriangle, FiTrash2, FiEye, FiX } from "react-icons/fi";
 
-const BRAND = "#280882";
+
 const GREEN = "#16a34a";
 const ic = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-600";
 const lc = "block text-xs font-medium text-gray-600 mb-1";
@@ -136,11 +136,31 @@ export default function KpiMasterPage() {
               className="border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:outline-none w-44" />
             <i className="fas fa-search absolute left-2.5 top-2.5 text-gray-400 text-xs" />
           </div>
-          <button onClick={() => exportCSV(rows.map(r => ({
-            Code: r.kpiCode, Objective: r.kpiObjective || r.title, Category: r.kpiCategory,
-            Department: r.department?.name, Target: r.targetValue, Unit: r.unit,
-            Direction: r.direction, Warning: r.warningLimit, Critical: r.criticalLimit,
-          })), "kpi_masters.csv")}
+          <button onClick={() => exportCSV(
+  "kpi_masters.csv",
+  [
+    "Code",
+    "Objective",
+    "Category",
+    "Department",
+    "Target",
+    "Unit",
+    "Direction",
+    "Warning",
+    "Critical"
+  ],
+  rows.map(r => [
+    r.kpiCode,
+    r.kpiObjective || r.title,
+    r.kpiCategory,
+    r.department?.name,
+    r.targetValue,
+    r.unit,
+    r.direction,
+    r.warningLimit,
+    r.criticalLimit
+  ])
+)}
             className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
             <i className="fas fa-download text-xs" /> Export
           </button>

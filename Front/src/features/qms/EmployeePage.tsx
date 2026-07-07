@@ -97,7 +97,13 @@ const openEdit = (r: Employee) => {
   setEditing(r);
   setForm({
     ...r,
-    department: r.department ? { id: r.department.id } : null,
+    department: r.department
+  ? {
+      id: r.department.id,
+      code: r.department.code,
+      name: r.department.name,
+    }
+  : null,
     joiningDate: r.joiningDate || null,
     dateOfBirth: r.dateOfBirth || null,
     yearsOfExperience: r.yearsOfExperience ?? null,
@@ -168,12 +174,8 @@ const save = async (addNew = false) => {
       delete payload.employeeId;
     }
     
-    let response;
-    if (editing) {
-      response = await employeeApi.update(editing.id, payload);
-    } else {
-      response = await employeeApi.create(payload);
-    }
+   
+   
     
     // If we're adding a new employee and want to continue adding more
     if (addNew) { 
@@ -236,11 +238,31 @@ const save = async (addNew = false) => {
             <p className="text-gray-500 mt-1 text-sm">Manage employees, designations, departments and roles</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => exportCSV(rows.map(r => ({
-              "Emp ID": r.employeeId, "First Name": r.firstName, "Last Name": r.lastName,
-              Department: r.department?.name, Designation: r.designation,
-              Role: r.role, Email: r.email, Phone: r.phone, Status: r.status,
-            })), "employees.csv")}
+            <button onClick={() => exportCSV(
+  "employees.csv",
+  [
+    "Emp ID",
+    "First Name",
+    "Last Name",
+    "Department",
+    "Designation",
+    "Role",
+    "Email",
+    "Phone",
+    "Status"
+  ],
+  rows.map(r => [
+    r.employeeId,
+    r.firstName,
+    r.lastName,
+    r.department?.name,
+    r.designation,
+    r.role,
+    r.email,
+    r.phone,
+    r.status
+  ])
+)}
               className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm flex items-center gap-2">
               <FiDownload /> Export
             </button>
@@ -325,13 +347,13 @@ const save = async (addNew = false) => {
                     <td className="px-4 py-3 text-gray-500 text-xs">{r.department?.name || "—"}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs max-w-[130px] truncate">{r.designation || "—"}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[r.role] || "bg-gray-100 text-gray-600"}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[r.role ?? ""] || "bg-gray-100 text-gray-600"}`}>
                         {r.role?.replace(/_/g," ")}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{r.email || "—"}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{r.phone || "—"}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{fmtDate(r.joiningDate)}</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{fmtDate(r.joiningDate ?? null)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold
                         ${r.status === "ACTIVE" ? "bg-green-100 text-green-700"
@@ -563,7 +585,7 @@ const save = async (addNew = false) => {
                   <p className="text-xl font-bold text-gray-800">{viewItem.firstName} {viewItem.lastName}</p>
                   <p className="text-sm text-gray-500">{viewItem.designation || "—"}</p>
                   <div className="flex gap-1.5 mt-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[viewItem.role] || "bg-gray-100 text-gray-600"}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[viewItem.role ?? ""] || "bg-gray-100 text-gray-600"}`}>
                       {viewItem.role?.replace(/_/g," ")}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold
@@ -585,8 +607,8 @@ const save = async (addNew = false) => {
                   ["Personal Email", viewItem.personalEmail || "—"],
                   ["Mobile", viewItem.phone || "—"],
                   ["Alt. Number", viewItem.alternativeNumber || "—"],
-                  ["Date of Birth", fmtDate(viewItem.dateOfBirth)],
-                  ["Joining Date", fmtDate(viewItem.joiningDate)],
+                  ["Date of Birth", fmtDate(viewItem.dateOfBirth ?? null)],
+                  ["Joining Date", fmtDate(viewItem.joiningDate ?? null)],
                   ["Qualification", viewItem.highestQualification || "—"],
                   ["Experience", viewItem.yearsOfExperience != null ? `${viewItem.yearsOfExperience} years` : "—"],
                   ["Created", viewItem.createdAt ? new Date(viewItem.createdAt).toLocaleDateString() : "—"],

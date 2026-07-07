@@ -1,6 +1,10 @@
 // ── Shared references ─────────────────────────────────────────────────────
 export interface CertRef { id: number; name?: string; code?: string }
-export interface DeptRef  { id: number; name?: string }
+export interface DeptRef {
+    id: number;
+    code: string;
+    name: string;
+}
 
 // ── Event helper ──────────────────────────────────────────────────────────
 export type InputChg = React.ChangeEvent<
@@ -91,6 +95,7 @@ export interface Employee {
   highestQualification?: string;
   professionalCertifications?: string;
   skills?: string;
+  createdAt?: string;
   yearsOfExperience?: number | null;
   role?: string;
   status?: string;
@@ -111,6 +116,7 @@ export interface Auditor {
   leadAuditorCertNo?: string;
   certIssueDate?: string | null;
   certExpiryDate?: string | null;
+  createdAt?: string;
   assignedStandards?: string;
   auditScope?: string;
   experienceYears?: number | null;
@@ -153,6 +159,8 @@ export interface Document {
   preparedById?: string;
   reviewedBy?: string;
   reviewedById?: string;
+  changeLog?: string;
+  updatedAt?: string;
   keywords?: string;
   changeDescription?: string;
   description?: string;
@@ -205,6 +213,7 @@ export interface KpiEntry {
   enteredBy?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  achievementPercent?: number;
   createdAt?: string;
 }
 
@@ -217,6 +226,8 @@ export interface AuditPlan {
   leadAuditor?: string;
   auditorTeam?: string;
   scope?: string;
+  auditRefNo?: string;
+  auditCoordinator?:string
   auditCriteria?: string;
   objective?: string;
   plannedStartDate?: string;
@@ -239,7 +250,9 @@ export interface AuditSchedule {
   auditee?: string;
   auditDate?: string;
   startTime?: string;
+  status?:string
   endTime?: string;
+  scheduledTime?:string;
   createdAt?: string;
 }
 
@@ -255,6 +268,9 @@ export interface AuditObservation {
   findingType?: string;
   observationDescription?: string;
   objectiveEvidence?: string;
+  observationId?: string;
+  status?: string;
+  ncId?: string;
   riskLevel?: string;
   severity?: string;
   department?: string;
@@ -302,6 +318,7 @@ export interface AuditFeedback {
   auditDate?: string;
   auditorKnowledge?: number;
   technicalCompetency?: number;
+   status?: string;
   auditCoverage?: number;
   auditorQualities?: number;
   employeeInteraction?: number;
@@ -317,7 +334,8 @@ export interface AuditFeedback {
 }
 
 export interface ClauseMaster {
-  id: number;
+  id:number;
+  clauseId: number;
   mainClauseNumber?: string;
   mainClauseTitle?: string;
   subClauseReference?: string;
@@ -338,6 +356,7 @@ export interface MrmPlan {
   chairman?: string;
   mrRepresentative?: string;
   coordinator?: string;
+  
   meetingDate?: string;
   meetingTime?: string;
   meetingLocation?: string;
@@ -554,8 +573,9 @@ export interface KpiReviewItem {
   target?: number;
   unit?: string;
   actualValue?: number | null;
-  achievementPercent?: number | null;
+ 
   achievementStatus?: string;
+  achievementPercent?:number;
   remarks?: string;
 }
 

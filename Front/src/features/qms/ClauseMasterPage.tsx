@@ -68,7 +68,13 @@ export default function ClauseMasterPage() {
     setForm({
       ...EMPTY, ...r,
       certification: r.certification ? { id: r.certification.id } : null,
-      department: r.department ? { id: r.department.id } : null,
+      department: r.department
+  ? {
+      id: r.department.id,
+      code: r.department.code,
+      name: r.department.name,
+    }
+  : null,
     });
     setShowModal(true);
   };
@@ -135,7 +141,11 @@ export default function ClauseMasterPage() {
 
   const filtered = useMemo(() => rows.filter(r => {
     const ms = !search || [r.clauseId, r.mainClauseNumber, r.mainClauseTitle, r.subClauseReference, r.subClauseTitle]
-      .some(v => v?.toLowerCase().includes(search.toLowerCase()));
+      .some(v =>
+    String(v ?? "")
+      .toLowerCase()
+      .includes(search.toLowerCase())
+);
     const mc = !filterCert   || String(r.certification?.id) === filterCert;
     const md = !filterDept   || String(r.department?.id)    === filterDept;
     const mst = !filterStatus || r.status === filterStatus;

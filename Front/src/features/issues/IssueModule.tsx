@@ -470,42 +470,38 @@
 
 
 
-import { useEffect, useState } from 'react';
+import {  useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { issueApi, certApi, deptApi } from '../../api/qms.api';
+import { issueApi } from '../../api/qms.api';
 import { exportCSV } from '../master-data/chartUtils';
-import type { IssueRegister, Certification, Department, CertRef, DeptRef, InputChg } from '../qms/types';
-import { apiMsg } from '../qms/types';
+import type { IssueRegister  } from '../qms/types';
+
 import DocumentIssueModule from './DocumentIssueModule';
 import {
-  FiPlus, FiSearch, FiEdit, FiTrash2, FiX, FiRefreshCw,
-  FiChevronDown, FiChevronUp, FiDownload, FiPrinter,
-  FiAlertTriangle, FiCheckCircle, FiFileText, FiBarChart2,
-  FiClock, FiAlertCircle, FiEye, FiGrid, FiList, FiFilter
+  FiRefreshCw,
+  FiDownload, FiPrinter,
+  FiFileText, 
 } from 'react-icons/fi';
 
-const CATEGORIES = ['PROCESS','PRODUCT','SYSTEM','SAFETY','CUSTOMER','OTHER'];
+const CATEGORIES = ['PROCESS', 'PRODUCT', 'DOCUMENT', 'SAFETY', 'OTHER'];
+
+<select>
+{CATEGORIES.map(c=>(
+<option key={c}>{c}</option>
+))}
+</select>
+
 const SEVERITIES = ['LOW','MEDIUM','HIGH','CRITICAL'];
+{SEVERITIES.map(s=>(
+<option key={s}>{s}</option>
+))}
 const STATUSES = ['OPEN','IN_PROGRESS','RESOLVED','CLOSED'];
+{STATUSES.map(s=>(
+<option key={s}>{s}</option>
+))}
 
-const SEV_COLOR: Record<string, string> = {
-  LOW: 'bg-blue-100 text-blue-700', MEDIUM: 'bg-yellow-100 text-yellow-700',
-  HIGH: 'bg-orange-100 text-orange-700', CRITICAL: 'bg-red-100 text-red-700',
-};
-const SEV_GRAD: Record<string, string> = {
-  LOW: 'from-blue-500 to-blue-600', MEDIUM: 'from-yellow-500 to-orange-500',
-  HIGH: 'from-orange-500 to-orange-600', CRITICAL: 'from-red-600 to-red-700',
-};
-const ST_COLOR: Record<string, string> = {
-  OPEN: 'bg-red-100 text-red-700', IN_PROGRESS: 'bg-yellow-100 text-yellow-700',
-  RESOLVED: 'bg-green-100 text-green-700', CLOSED: 'bg-gray-100 text-gray-600',
-};
 
-const EMPTY_FORM = {
-  title: '', description: '', category: 'PROCESS', severity: 'MEDIUM',
-  raisedBy: '', targetDate: '', rootCause: '', correctiveAction: '',
-  status: 'OPEN', certification: null as CertRef | null, department: null as DeptRef | null,
-};
+
 
 const TABS = [
   { id: 'doc-issue', label: 'Document Issue Register',  icon: 'fas fa-file-contract'      },
@@ -569,7 +565,7 @@ function IssueReport() {
       const issues = (await issueApi.getAll() as unknown as IssueRegister[]);
       const w = window.open('', '_blank');
       if (!w) return;
-      w.document.write(`<html><head><title>Issue Register Report</title><style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px}h1{color:#280882}table{width:100%;border-collapse:collapse}th{background:#280882;color:white;padding:7px 10px;text-align:left}td{border:1px solid #ddd;padding:6px 10px}tr:nth-child(even){background:#f5f3ff}</style></head><body><h1>Issue Register Report</h1><p>Generated: ${new Date().toLocaleDateString('en-IN')} | Total: ${issues.length}</p><table><tr>${['#','Title','Category','Severity','Raised By','Target Date','Status'].map(h=>`<th>${h}</th>`).join('')}</tr>${issues.map(i=>`<tr><td>#${i.id}</td><td>${i.title||i.issueTitle||''}</td><td>${i.category||''}</td><td>${i.severity||''}</td><td>${i.raisedBy||''}</td><td>${i.targetDate||''}</td><td>${i.status||''}</td></tr>`).join('')}</table></body></html>`);
+      w.document.write(`<html><head><title>Issue Register Report</title><style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px}h1{color:#280882}table{width:100%;border-collapse:collapse}th{background:#280882;color:white;padding:7px 10px;text-align:left}td{border:1px solid #ddd;padding:6px 10px}tr:nth-child(even){background:#f5f3ff}</style></head><body><h1>Issue Register Report</h1><p>Generated: ${new Date().toLocaleDateString('en-IN')} | Total: ${issues.length}</p><table><tr>${['#','Title','Category','Severity','Raised By','Target Date','Status'].map(h=>`<th>${h}</th>`).join('')}</tr>${issues.map(i=>`<tr><td>#${i.id}</td><td>${i.title || ''}</td><td>${i.category||''}</td><td>${i.severity||''}</td><td>${i.raisedBy||''}</td><td>${i.targetDate||''}</td><td>${i.status||''}</td></tr>`).join('')}</table></body></html>`);
       w.document.close(); w.print();
     } catch { alert('Failed to generate PDF.'); }
     finally { setLoading(false); }

@@ -4,11 +4,23 @@ import type { Certification, AuditPlan, AuditFeedback, InputChg } from "./types"
 import { apiMsg } from "./types";
 import {
   FiPlus, FiSearch, FiTrash2, FiX, FiRefreshCw, FiChevronDown,
-  FiChevronUp, FiAlertTriangle, FiCheckCircle, FiStar, FiUser,
+  FiChevronUp, FiAlertTriangle, FiCheckCircle, FiStar, 
   FiEye, FiBarChart2, FiFileText, FiGrid, FiList
 } from "react-icons/fi";
 
-const QUESTIONS = [
+type RatingKey =
+  | "auditorKnowledge"
+  | "technicalCompetency"
+  | "auditCoverage"
+  | "auditorQualities"
+  | "employeeInteraction"
+  | "clarityInCommunication"
+  | "timeManagement"
+  | "consistencyApproach"
+  | "queryResponse"
+  | "observationComments";
+
+const QUESTIONS: { key: RatingKey; label: string }[] = [
   { key: "auditorKnowledge", label: "Knowledge of the Auditors" },
   { key: "technicalCompetency", label: "Technical competency of the Auditors" },
   { key: "auditCoverage", label: "Coverage of all requirements in your Process" },
@@ -85,9 +97,9 @@ export default function AuditFeedbackPage() {
 
   const save = async () => {
     if (!form.auditorName || !form.auditeeName) { alert("Auditor Name and Auditee Name are required."); return; }
-    const allRated = QUESTIONS.every(q => (form[q.key] || 0) > 0);
+    const allRated = QUESTIONS.every(q => (Number(form[q.key as keyof typeof form]) || 0) > 0);
     if (!allRated) { alert("Please rate all 10 attributes."); return; }
-    const hasLow = QUESTIONS.some(q => (form[q.key] || 0) <= 2);
+    const hasLow = QUESTIONS.some(q => (Number(form[q.key]) || 0) <= 2);
     if (hasLow && !form.incidentExplanation.trim()) { alert("An Average or Poor rating requires an Incident Explanation."); return; }
     setSaving(true);
     try {
@@ -105,7 +117,7 @@ export default function AuditFeedbackPage() {
 
   const setRating = (key: string, val: number) => setForm(p => ({ ...p, [key]: val } as typeof form));
   const ff = (k: string) => (e: InputChg) => setForm(p => ({ ...p, [k]: e.target.value } as typeof form));
-  const hasLowRating = QUESTIONS.some(q => (form[q.key] || 0) > 0 && (form[q.key] || 0) <= 2);
+  const hasLowRating = QUESTIONS.some(q => (Number(form[q.key]) || 0) > 0 && (Number(form[q.key]) || 0) <= 2);
 
   const filtered = feedbacks.filter(fb => !search || [fb.auditorName, fb.auditeeName, fb.process].some(v => v?.toLowerCase().includes(search.toLowerCase())));
 
@@ -228,7 +240,7 @@ export default function AuditFeedbackPage() {
                   <div className="mt-2 pt-2 border-t border-gray-100">
                     <div className="flex gap-0.5">
                       {QUESTIONS.map(q => {
-                        const v = fb[q.key] || 0;
+                        const v = fb[q.key as keyof AuditFeedback] || 0;
                         const h = v === 4 ? "bg-green-500" : v === 3 ? "bg-blue-500" : v === 2 ? "bg-yellow-500" : v === 1 ? "bg-red-500" : "bg-gray-200";
                         return <div key={q.key} className={`flex-1 h-2 rounded-sm ${h}`} title={`${q.label}: ${v}`} />;
                       })}
@@ -290,9 +302,9 @@ export default function AuditFeedbackPage() {
                           <td colSpan={9} className="px-6 py-4 text-sm">
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                               {QUESTIONS.slice(0,5).map(q => {
-                                const v = fb[q.key] || 0;
+                                const v = fb[q.key as keyof AuditFeedback] || 0;
                                 const r = RATINGS.find(r => r.value === v);
-                                return <div key={q.key}><p className="text-xs text-gray-400 mb-1">{q.label}</p><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r ? r.color : "bg-gray-100 text-gray-500"}`}>{v > 0 ? `${v} — ${r?.label}` : "—"}</span></div>;
+                                return <div key={q.key}><p className="text-xs text-gray-400 mb-1">{q.label}</p><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r ? r.color : "bg-gray-100 text-gray-500"}`}>{Number(v) > 0 ? `${v} — ${r?.label}` : "—"}</span></div>;
                               })}
                             </div>
                           </td>

@@ -5,7 +5,7 @@ import { apiMsg } from "./types";
 import { exportCSV } from "../master-data/chartUtils";
 import {
   FiPlus, FiSearch, FiEdit, FiTrash2, FiEye, FiX, FiRefreshCw,
-  FiDownload, FiAlertTriangle, FiUser, FiShield, FiMail, FiPhone
+  FiDownload, FiAlertTriangle, FiUser, 
 } from "react-icons/fi";
 
 const BRAND = "#280882";
@@ -144,11 +144,29 @@ export default function AuditorPage() {
             <p className="text-gray-500 mt-1 text-sm">Manage internal and external auditors, qualifications and certifications</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => exportCSV(rows.map(r => ({
-              "Auditor ID": r.auditorCode, Name: r.name, Type: r.type,
-              Qualification: r.qualification, Email: r.email, Phone: r.phone,
-              "Cert Expiry": r.certExpiryDate, Status: r.status,
-            })), "auditors.csv")}
+            <button onClick={() => exportCSV(
+  "auditors.csv",
+  [
+    "Auditor ID",
+    "Name",
+    "Type",
+    "Qualification",
+    "Email",
+    "Phone",
+    "Cert Expiry",
+    "Status"
+  ],
+  rows.map(r => [
+    r.auditorCode,
+    r.name,
+    r.type,
+    r.qualification,
+    r.email,
+    r.phone,
+    r.certExpiryDate,
+    r.status
+  ])
+)}
               className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm flex items-center gap-2">
               <FiDownload /> Export
             </button>
@@ -236,7 +254,7 @@ export default function AuditorPage() {
                     <td className="px-4 py-3 text-gray-500 text-center">{r.experienceYears ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{r.email || "—"}</td>
                     <td className="px-4 py-3 text-gray-400 text-xs">{r.phone || "—"}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(r.certExpiryDate)}</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDate(r.certExpiryDate ?? null)}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${r.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                         {r.status}
@@ -470,8 +488,8 @@ export default function AuditorPage() {
                   ["Email", viewItem.email || "—"],
                   ["Phone", viewItem.phone || "—"],
                   ["Certificate No.", viewItem.leadAuditorCertNo || "—"],
-                  ["Cert Issue Date", formatDate(viewItem.certIssueDate)],
-                  ["Cert Validity", formatDate(viewItem.certExpiryDate)],
+                  ["Cert Issue Date", formatDate(viewItem.certIssueDate ?? null)],
+                  ["Cert Validity", formatDate(viewItem.certExpiryDate ?? null)],
                   ["Assigned Standards", viewItem.assignedStandards || "—"],
                   ["Created Date", viewItem.createdAt ? new Date(viewItem.createdAt).toLocaleDateString() : "—"],
                 ].map(([label, value]) => (
@@ -481,11 +499,11 @@ export default function AuditorPage() {
                   </div>
                 ))}
               </div>
-              {viewItem.certifications?.length > 0 && (
+              {(viewItem.certifications?.length ?? 0) > 0 && (
                 <div className="mt-3 bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Certifications</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {viewItem.certifications.map((c: string) => (
+                    {(viewItem.certifications ?? []).map((c: string) => (
                       <span key={c} className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">{c}</span>
                     ))}
                   </div>

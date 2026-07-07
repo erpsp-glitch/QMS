@@ -72,10 +72,11 @@ export default function DashboardPage() {
       auditApi.getOpenNcs(),
       activityApi.getRecent(20),
     ])
-      .then(([s, ncs, acts]: [Stats, unknown, unknown]) => {
-        setStats(s as Stats);
-        setOpenNcs(Array.isArray(ncs) ? (ncs as NC[]).slice(0, 5) : []);
-        setActivity(Array.isArray(acts) ? acts as ActivityLog[] : []);
+      .then((result) => {
+        const [s, ncs, acts] = result as [Stats, NC[], ActivityLog[]];
+        setStats(s);
+        setOpenNcs(ncs);
+        setActivity(acts);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -179,7 +180,7 @@ export default function DashboardPage() {
         ) : (
           <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
             {activity.map((item: ActivityLog, idx: number) => {
-              const action = (item.action || item.activityType || item.type || "CREATED").toUpperCase();
+              const action = ((item as any).action || (item as any).activityType || (item as any).type || "CREATED").toUpperCase();
               const style = ACTION_ICON[action] || { icon: "fas fa-circle", color: BRAND, bg: "#ede9fe" };
               return (
                 <div key={item.id ?? idx} className="px-5 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors">
@@ -188,17 +189,17 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-800 leading-snug">
-                      {item.description || item.message || `${action} — ${item.entityType || item.module || ""}`}
+                      {item.description || `${action} — ${item.entityType  || ""}`}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
-                      {(item.performedBy || item.username || item.user) && (
+                      {(item.performedBy || item.username ) && (
                         <>
                           <i className="fas fa-user text-[10px]" />
-                          <span>{item.performedBy || item.username || item.user}</span>
+                          <span>{item.performedBy || item.username }</span>
                           <span>·</span>
                         </>
                       )}
-                      <span>{timeAgo(item.timestamp || item.createdAt || item.performedAt)}</span>
+                      <span>{timeAgo(item.createdAt || (item as any).performedAt || (item as any).timestamp)}</span>
                     </div>
                   </div>
                   <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5" style={{ background: style.bg, color: style.color }}>

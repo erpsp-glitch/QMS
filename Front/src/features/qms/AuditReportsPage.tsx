@@ -17,13 +17,7 @@ const QUESTIONS = [
   { key: "observationComments",    label: "Observation Comments" },
 ];
 
-function ratingLabel(v: number) {
-  if (v === 4) return "Excellent";
-  if (v === 3) return "Good";
-  if (v === 2) return "Average";
-  if (v === 1) return "Poor";
-  return "—";
-}
+
 
 export default function AuditReportsPage() {
   const [certs, setCerts]     = useState<Certification[]>([]);
@@ -259,7 +253,7 @@ ${feedbacks.length > 0 ? `
               { label: "Open NCs",      value: ncs.filter(n => n.status !== "CLOSED").length,            color: "#f97316",  icon: "fas fa-door-open" },
               { label: "Closed NCs",    value: ncs.filter(n => n.status === "CLOSED").length,            color: "#10b981",  icon: "fas fa-lock" },
               { label: "O+ (Positive)", value: observations.filter(o => o.findingType === "POSITIVE_OBSERVATION").length, color: "#10b981", icon: "fas fa-thumbs-up" },
-              { label: "NC Findings",   value: observations.filter(o => ["NC","NC_MINOR","NC_MAJOR"].includes(o.findingType)).length, color: "#ef4444", icon: "fas fa-ban" },
+              { label: "NC Findings",   value: observations.filter(o => ["NC","NC_MINOR","NC_MAJOR"].includes(o.findingType ?? "")).length, color: "#ef4444", icon: "fas fa-ban" },
               { label: "Feedback Avg",  value: feedbacks.length > 0 ? (feedbacks.reduce((sum, fb) => sum + QUESTIONS.reduce((s,q) => s+((fb[q.key as keyof AuditFeedback] as number)||0), 0) / QUESTIONS.length, 0) / feedbacks.length).toFixed(1) + "/4" : "—", color: "#8b5cf6", icon: "fas fa-star" },
             ].map(k => (
               <div key={k.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
