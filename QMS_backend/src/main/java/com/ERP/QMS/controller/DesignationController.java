@@ -64,7 +64,7 @@ public class DesignationController {
             existing.setName(update.getName());
             existing.setDescription(update.getDescription());
             existing.setActive(update.isActive());
-            if (update.getDepartment() != null) existing.setDepartment(update.getDepartment());
+            existing.setDepartment(update.getDepartment()); // allow clearing to null too
             return ResponseEntity.ok(ApiResponse.ok("Updated", repo.save(existing)));
         }).orElse(ResponseEntity.notFound().build());
     }
