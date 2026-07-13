@@ -239,6 +239,18 @@ export const kpiReviewApi = {
   delete: (id: number) => http.delete(`/kpi-reviews/${id}`),
 };
 
+// ── KPI Entry Review (Single KPI Record Reviews) ─────────────────────
+export const kpiEntryReviewApi = {
+  getAll: () => api(http.get("/kpi-review")),
+  getById: (id: number) => api(http.get(`/kpi-review/${id}`)),
+  getHistory: (kpiEntryId: number) => api(http.get(`/kpi-review/history/${kpiEntryId}`)),
+  create: (data: Record<string, unknown>) => api(http.post("/kpi-review", data)),
+  update: (id: number, data: Record<string, unknown>) => api(http.put(`/kpi-review/${id}`, data)),
+  complete: (id: number) => api(http.put(`/kpi-review/complete/${id}`)),
+  delete: (id: number) => http.delete(`/kpi-review/${id}`),
+  getDashboardStats: () => api(http.get("/kpi-review/dashboard-stats")),
+};
+
 // ── Internal Audit Review ─────────────────────────────────────────────
 export const auditReviewApi = {
   getAll: () => api(http.get("/audit-reviews")),

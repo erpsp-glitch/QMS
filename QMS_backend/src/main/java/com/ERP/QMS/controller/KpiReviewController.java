@@ -3,184 +3,239 @@ package com.ERP.QMS.controller;
 import com.ERP.QMS.dto.ApiResponse;
 import com.ERP.QMS.model.ActionTracker;
 import com.ERP.QMS.model.KpiEntry;
-import com.ERP.QMS.model.KpiMaster;
 import com.ERP.QMS.model.KpiReview;
-import com.ERP.QMS.model.MrmPlan;
 import com.ERP.QMS.repository.ActionTrackerRepository;
 import com.ERP.QMS.repository.KpiEntryRepository;
 import com.ERP.QMS.repository.KpiMasterRepository;
 import com.ERP.QMS.repository.KpiReviewRepository;
-import com.ERP.QMS.repository.MrmPlanRepository;
+import com.ERP.QMS.repository.CertificationRepository;
+import com.ERP.QMS.repository.DepartmentRepository;
 import com.ERP.QMS.service.SequenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/kpi-reviews")
+@RequestMapping("/kpi-review")
 @RequiredArgsConstructor
 public class KpiReviewController {
 
     private final KpiReviewRepository kpiReviewRepository;
-    private final MrmPlanRepository mrmPlanRepository;
-    private final KpiMasterRepository kpiMasterRepository;
     private final KpiEntryRepository kpiEntryRepository;
+    private final KpiMasterRepository kpiMasterRepository;
+    private final CertificationRepository certificationRepository;
+    private final DepartmentRepository departmentRepository;
     private final ActionTrackerRepository actionTrackerRepository;
     private final SequenceService sequenceService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<KpiReview>>> getAll() {
+    public ResponseEntity<ApiResponse<List<KpiReview>>> getAllReviews() {
         return ResponseEntity.ok(ApiResponse.ok(kpiReviewRepository.findAll()));
     }
 
-    @GetMapping("/certification/{certId}")
-    public ResponseEntity<ApiResponse<List<KpiReview>>> getByCert(@PathVariable Long certId) {
-        return ResponseEntity.ok(ApiResponse.ok(kpiReviewRepository.findByCertificationId(certId)));
-    }
-
-    @GetMapping("/mrm/{mrmPlanId}")
-    public ResponseEntity<ApiResponse<KpiReview>> getByMrm(@PathVariable Long mrmPlanId) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                kpiReviewRepository.findByMrmPlanId(mrmPlanId).orElse(null)));
-    }
-
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<KpiReview>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(kpiReviewRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("KPI Review not found: " + id))));
+    public ResponseEntity<ApiResponse<KpiReview>> getReviewById(@PathVariable Long id) {
+        KpiReview review = kpiReviewRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("KPI Review not found: " + id));
+        return ResponseEntity.ok(ApiResponse.ok(review));
     }
 
-    // Load KPI entries for a given cert / year to pre-populate review form
-    @GetMapping("/load-kpi-data")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> loadKpiData(
-            @RequestParam Long certId,
-            @RequestParam(required = false) Integer year) {
-        int reviewYear = (year != null) ? year : LocalDate.now().getYear();
-        List<KpiMaster> masters = kpiMasterRepository.findByCertificationId(certId);
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (KpiMaster master : masters) {
-            // Find latest entry for this KPI in the given year
-            List<KpiEntry> entries = kpiEntryRepository.findByKpiMasterIdAndYear(master.getId(), reviewYear);
-            Double actualValue = null;
-            if (!entries.isEmpty()) {
-                KpiEntry latest = entries.get(entries.size() - 1);
-                actualValue = latest.getActualValue() != null ? latest.getActualValue().doubleValue() : null;
-            }
-
-            double target = master.getTargetValue() instanceof Number
-                    ? ((Number) master.getTargetValue()).doubleValue() : 0;
-            Double achievement = null;
-            String status = "NOT_ACHIEVED";
-            if (actualValue != null && target > 0) {
-                achievement = (actualValue / target) * 100;
-                if (achievement >= 100) status = "ACHIEVED";
-                else if (achievement >= 75) status = "PARTIALLY_ACHIEVED";
-                else status = "NOT_ACHIEVED";
-            }
-
-            result.add(Map.of(
-                "kpiCode", master.getKpiCode() != null ? master.getKpiCode() : "",
-                "kpiName", master.getKpiObjective() != null ? master.getKpiObjective() : "",
-                "department", master.getDepartment() != null ? master.getDepartment().getName() : "",
-                "frequency", master.getFrequency() != null ? master.getFrequency() : "",
-                "target", target,
-                "unit", master.getUnit() != null ? master.getUnit() : "",
-                "actualValue", actualValue != null ? actualValue : "",
-                "achievementPercent", achievement != null ? achievement : "",
-                "achievementStatus", status
-            ));
-        }
-        return ResponseEntity.ok(ApiResponse.ok(result));
+    @GetMapping("/history/{kpiEntryId}")
+    public ResponseEntity<ApiResponse<List<KpiReview>>> getReviewHistory(@PathVariable Long kpiEntryId) {
+        List<KpiReview> history = kpiReviewRepository.findByKpiEntryIdOrderByCreatedDateDesc(kpiEntryId);
+        return ResponseEntity.ok(ApiResponse.ok(history));
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<KpiReview>> create(@RequestBody KpiReview review) {
-        // Resolve MRM Plan
-        if (review.getMrmPlan() != null && review.getMrmPlan().getId() != null) {
-            MrmPlan mrm = mrmPlanRepository.findById(review.getMrmPlan().getId())
-                    .orElseThrow(() -> new RuntimeException("MRM Plan not found"));
-            review.setMrmPlan(mrm);
-            if (review.getCertification() == null && mrm.getCertification() != null) {
-                review.setCertification(mrm.getCertification());
-            }
-            if (review.getReviewDate() == null) review.setReviewDate(mrm.getMeetingDate());
-            if (review.getFinancialYear() == null) review.setFinancialYear(mrm.getFinancialYear());
+    public ResponseEntity<ApiResponse<KpiReview>> createReview(@RequestBody KpiReview review) {
+        if (review.getKpiEntry() == null || review.getKpiEntry().getId() == null) {
+            throw new RuntimeException("KPI Entry is required for review.");
         }
 
-        String certCode = review.getCertification() != null ? review.getCertification().getCode() : "QMS";
-        review.setKpiReviewId(sequenceService.nextKpiReviewId(certCode));
+        KpiEntry entry = kpiEntryRepository.findById(review.getKpiEntry().getId())
+                .orElseThrow(() -> new RuntimeException("KPI Entry not found."));
+        review.setKpiEntry(entry);
 
-        // Calculate summary
-        List<KpiReview.KpiReviewItem> items = review.getKpiPerformanceItems();
-        if (items != null) {
-            review.setTotalKpiReviewed(items.size());
-            review.setAchieved((int) items.stream().filter(i -> "ACHIEVED".equals(i.getAchievementStatus())).count());
-            review.setPartiallyAchieved((int) items.stream().filter(i -> "PARTIALLY_ACHIEVED".equals(i.getAchievementStatus())).count());
-            review.setNotAchieved((int) items.stream().filter(i -> "NOT_ACHIEVED".equals(i.getAchievementStatus())).count());
+        // Inherit certification and department from KPI Entry/Master if not set
+        if (review.getCertification() == null && entry.getKpiMaster() != null) {
+            review.setCertification(entry.getKpiMaster().getCertification());
+        }
+        if (review.getDepartment() == null && entry.getKpiMaster() != null) {
+            review.setDepartment(entry.getKpiMaster().getDepartment());
         }
 
-        review.setReviewStatus(KpiReview.ReviewStatus.DRAFT);
+        review.setReviewNo(sequenceService.nextKpiEntryReviewNo());
+        if (review.getAchievementPercentage() == null) {
+            review.setAchievementPercentage(entry.getAchievementPercent());
+        }
+        if (review.getReviewStatus() == null) {
+            review.setReviewStatus("PENDING_REVIEW");
+        }
+        if (review.getReviewDate() == null) {
+            review.setReviewDate(LocalDate.now());
+        }
+
         KpiReview saved = kpiReviewRepository.save(review);
-
-        // Auto-create action if corrective action required
-        if (KpiReview.ReviewDecision.CORRECTIVE_ACTION_REQUIRED == saved.getReviewDecision()) {
-            createActionFromKpiReview(saved);
-        }
-
-        return ResponseEntity.ok(ApiResponse.ok("KPI Review created", saved));
+        return ResponseEntity.ok(ApiResponse.ok("Review created successfully", saved));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<KpiReview>> update(@PathVariable Long id, @RequestBody KpiReview updated) {
+    public ResponseEntity<ApiResponse<KpiReview>> updateReview(@PathVariable Long id, @RequestBody KpiReview updated) {
         KpiReview existing = kpiReviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("KPI Review not found: " + id));
 
-        existing.setKpiPerformanceItems(updated.getKpiPerformanceItems());
-        existing.setReviewDecision(updated.getReviewDecision());
-        existing.setManagementComments(updated.getManagementComments());
-        existing.setResponsiblePerson(updated.getResponsiblePerson());
-        existing.setTargetCompletionDate(updated.getTargetCompletionDate());
         if (updated.getReviewStatus() != null) existing.setReviewStatus(updated.getReviewStatus());
-        existing.setReviewedBy(updated.getReviewedBy());
-        existing.setReviewedDate(updated.getReviewedDate());
+        if (updated.getReviewDecision() != null) existing.setReviewDecision(updated.getReviewDecision());
+        if (updated.getPerformanceRating() != null) existing.setPerformanceRating(updated.getPerformanceRating());
+        if (updated.getManagementComment() != null) existing.setManagementComment(updated.getManagementComment());
+        if (updated.getStrengths() != null) existing.setStrengths(updated.getStrengths());
+        if (updated.getWeaknesses() != null) existing.setWeaknesses(updated.getWeaknesses());
+        if (updated.getRootCause() != null) existing.setRootCause(updated.getRootCause());
+        if (updated.getImprovementOpportunity() != null) existing.setImprovementOpportunity(updated.getImprovementOpportunity());
+        if (updated.getCorrectiveAction() != null) existing.setCorrectiveAction(updated.getCorrectiveAction());
+        if (updated.getPreventiveAction() != null) existing.setPreventiveAction(updated.getPreventiveAction());
+        if (updated.getResponsiblePerson() != null) existing.setResponsiblePerson(updated.getResponsiblePerson());
+        if (updated.getTargetCompletionDate() != null) existing.setTargetCompletionDate(updated.getTargetCompletionDate());
+        if (updated.getPriority() != null) existing.setPriority(updated.getPriority());
+        if (updated.getNextReviewDate() != null) existing.setNextReviewDate(updated.getNextReviewDate());
+        if (updated.getAttachmentPath() != null) existing.setAttachmentPath(updated.getAttachmentPath());
+        if (updated.getReviewerId() != null) existing.setReviewerId(updated.getReviewerId());
 
-        // Recalculate summary
-        List<KpiReview.KpiReviewItem> items = updated.getKpiPerformanceItems();
-        if (items != null) {
-            existing.setTotalKpiReviewed(items.size());
-            existing.setAchieved((int) items.stream().filter(i -> "ACHIEVED".equals(i.getAchievementStatus())).count());
-            existing.setPartiallyAchieved((int) items.stream().filter(i -> "PARTIALLY_ACHIEVED".equals(i.getAchievementStatus())).count());
-            existing.setNotAchieved((int) items.stream().filter(i -> "NOT_ACHIEVED".equals(i.getAchievementStatus())).count());
+        KpiReview saved = kpiReviewRepository.save(existing);
+        return ResponseEntity.ok(ApiResponse.ok("Review updated successfully", saved));
+    }
+
+    @PutMapping("/complete/{id}")
+    public ResponseEntity<ApiResponse<KpiReview>> completeReview(@PathVariable Long id) {
+        KpiReview existing = kpiReviewRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("KPI Review not found: " + id));
+
+        existing.setReviewStatus("COMPLETED");
+        KpiReview saved = kpiReviewRepository.save(existing);
+
+        // Auto-create Corrective Action if needed
+        boolean needsAction = "NEEDS_IMPROVEMENT".equalsIgnoreCase(saved.getReviewDecision())
+                || "ESCALATED".equalsIgnoreCase(saved.getReviewDecision())
+                || (saved.getCorrectiveAction() != null && !saved.getCorrectiveAction().isBlank());
+
+        if (needsAction) {
+            createActionTracker(saved);
         }
 
-        return ResponseEntity.ok(ApiResponse.ok("Updated", kpiReviewRepository.save(existing)));
+        return ResponseEntity.ok(ApiResponse.ok("KPI Review completed and locked", saved));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteReview(@PathVariable Long id) {
         kpiReviewRepository.deleteById(id);
-        return ResponseEntity.ok(ApiResponse.ok("Deleted"));
+        return ResponseEntity.ok(ApiResponse.ok("KPI Review deleted successfully"));
     }
 
-    private void createActionFromKpiReview(KpiReview review) {
+    @GetMapping("/dashboard-stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        List<KpiReview> reviews = kpiReviewRepository.findAll();
+        List<KpiEntry> entries = kpiEntryRepository.findAll();
+
+        long totalKpis = kpiMasterRepository.count();
+        long completedReviews = reviews.stream().filter(r -> "COMPLETED".equalsIgnoreCase(r.getReviewStatus()) || "APPROVED".equalsIgnoreCase(r.getReviewStatus())).count();
+        long pendingReviews = entries.size() - completedReviews;
+        if (pendingReviews < 0) pendingReviews = 0;
+
+        List<ActionTracker> actions = actionTrackerRepository.findAll();
+        long overdueActions = actions.stream()
+                .filter(a -> ActionTracker.ActionStatus.OPEN == a.getStatus() || ActionTracker.ActionStatus.IN_PROGRESS == a.getStatus())
+                .filter(a -> a.getTargetCompletionDate() != null && a.getTargetCompletionDate().isBefore(LocalDate.now()))
+                .count();
+
+        // Department-wise Review Status
+        Map<String, Map<String, Long>> deptStats = reviews.stream()
+                .filter(r -> r.getDepartment() != null)
+                .collect(Collectors.groupingBy(
+                        r -> r.getDepartment().getName(),
+                        Collectors.groupingBy(KpiReview::getReviewStatus, Collectors.counting())
+                ));
+
+        // Certification-wise Review Status
+        Map<String, Map<String, Long>> certStats = reviews.stream()
+                .filter(r -> r.getCertification() != null)
+                .collect(Collectors.groupingBy(
+                        r -> r.getCertification().getCode(),
+                        Collectors.groupingBy(KpiReview::getReviewStatus, Collectors.counting())
+                ));
+
+        // Reviewer-wise Pending Reviews
+        Map<String, Long> reviewerPending = reviews.stream()
+                .filter(r -> "PENDING_REVIEW".equalsIgnoreCase(r.getReviewStatus()) || "UNDER_REVIEW".equalsIgnoreCase(r.getReviewStatus()))
+                .filter(r -> r.getReviewerId() != null)
+                .collect(Collectors.groupingBy(KpiReview::getReviewerId, Collectors.counting()));
+
+        // KPI Performance Distribution
+        Map<String, Long> performanceDist = entries.stream()
+                .filter(e -> e.getStatus() != null)
+                .collect(Collectors.groupingBy(e -> e.getStatus().name(), Collectors.counting()));
+
+        // Action Closure Status
+        Map<String, Long> actionClosure = actions.stream()
+                .filter(a -> ActionTracker.SourceModule.KPI_REVIEW == a.getSourceModule())
+                .filter(a -> a.getStatus() != null)
+                .collect(Collectors.groupingBy(a -> a.getStatus().name(), Collectors.counting()));
+
+        // Upcoming Reviews Calendar
+        List<Map<String, Object>> calendar = reviews.stream()
+                .filter(r -> r.getNextReviewDate() != null)
+                .map(r -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", r.getId());
+                    map.put("kpiCode", r.getKpiEntry().getKpiMaster() != null ? r.getKpiEntry().getKpiMaster().getKpiCode() : "");
+                    map.put("kpiName", r.getKpiEntry().getKpiMaster() != null ? r.getKpiEntry().getKpiMaster().getKpiObjective() : "");
+                    map.put("nextReviewDate", r.getNextReviewDate().toString());
+                    map.put("reviewer", r.getReviewerId());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        stats.put("totalKpis", totalKpis);
+        stats.put("pendingReviews", pendingReviews);
+        stats.put("completedReviews", completedReviews);
+        stats.put("overdueActions", overdueActions);
+        stats.put("departmentStats", deptStats);
+        stats.put("certificationStats", certStats);
+        stats.put("reviewerPending", reviewerPending);
+        stats.put("performanceDistribution", performanceDist);
+        stats.put("actionClosureStatus", actionClosure);
+        stats.put("upcomingCalendar", calendar);
+
+        return ResponseEntity.ok(ApiResponse.ok(stats));
+    }
+
+    private void createActionTracker(KpiReview review) {
         ActionTracker action = new ActionTracker();
         action.setActionNo(sequenceService.nextActionNo());
         action.setSourceModule(ActionTracker.SourceModule.KPI_REVIEW);
-        action.setSourceReferenceNo(review.getKpiReviewId());
+        action.setSourceReferenceNo(review.getReviewNo());
         action.setActionDate(LocalDate.now());
-        action.setActionDescription("KPI Review Action: " + (review.getManagementComments() != null ? review.getManagementComments() : "Corrective action required"));
-        action.setResponsiblePerson(review.getResponsiblePerson());
-        action.setTargetCompletionDate(review.getTargetCompletionDate());
-        action.setPriority(ActionTracker.ActionPriority.HIGH);
+        action.setActionDescription(String.format("Corrective Action for KPI %s Review %s: %s",
+                review.getKpiEntry().getKpiMaster() != null ? review.getKpiEntry().getKpiMaster().getKpiCode() : "N/A",
+                review.getReviewNo(),
+                review.getCorrectiveAction() != null ? review.getCorrectiveAction() : "Management Review Recommendation"
+        ));
+        action.setResponsiblePerson(review.getResponsiblePerson() != null ? review.getResponsiblePerson() : "Unassigned");
+        action.setTargetCompletionDate(review.getTargetCompletionDate() != null ? review.getTargetCompletionDate() : LocalDate.now().plusDays(30));
+        action.setPriority(review.getPriority() != null ? ActionTracker.ActionPriority.valueOf(review.getPriority().toUpperCase()) : ActionTracker.ActionPriority.MEDIUM);
         action.setStatus(ActionTracker.ActionStatus.OPEN);
         action.setReminderRequired(true);
         action.setReminderDaysBeforeDue(7);
+        if (review.getDepartment() != null) {
+            action.setDepartment(review.getDepartment().getName());
+        }
         actionTrackerRepository.save(action);
     }
 }

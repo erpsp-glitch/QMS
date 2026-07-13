@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface KpiReviewRepository extends JpaRepository<KpiReview, Long> {
-    Optional<KpiReview> findByKpiReviewId(String kpiReviewId);
-    Optional<KpiReview> findByMrmPlanId(Long mrmPlanId);
-    List<KpiReview> findByCertificationId(Long certId);
+    Optional<KpiReview> findByReviewNo(String reviewNo);
+    List<KpiReview> findByKpiEntryIdOrderByCreatedDateDesc(Long kpiEntryId);
+    List<KpiReview> findByKpiEntryId(Long kpiEntryId);
 }

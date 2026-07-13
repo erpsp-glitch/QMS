@@ -11,6 +11,7 @@ import com.ERP.QMS.repository.EmployeeRepository;
 import com.ERP.QMS.repository.InternalAuditReviewRepository;
 import com.ERP.QMS.repository.IssueRegisterRepository;
 import com.ERP.QMS.repository.KpiMasterRepository;
+import com.ERP.QMS.repository.MrmKpiReviewRepository;
 import com.ERP.QMS.repository.KpiReviewRepository;
 import com.ERP.QMS.repository.MrmPlanRepository;
 import com.ERP.QMS.repository.NcTrackingRepository;
@@ -31,6 +32,7 @@ public class SequenceService {
     private final MrmPlanRepository mrmPlanRepository;
     private final IssueRegisterRepository issueRegisterRepository;
     private final KpiMasterRepository kpiMasterRepository;
+    private final MrmKpiReviewRepository mrmKpiReviewRepository;
     private final KpiReviewRepository kpiReviewRepository;
     private final InternalAuditReviewRepository internalAuditReviewRepository;
     private final ProcessReviewPlanRepository processReviewPlanRepository;
@@ -62,8 +64,13 @@ public class SequenceService {
     }
 
     public String nextKpiReviewId(String certCode) {
-        long seq = kpiReviewRepository.count() + 1;
+        long seq = mrmKpiReviewRepository.count() + 1;
         return String.format("KR-%s-%d-%03d", certCode, currentYear(), seq);
+    }
+
+    public String nextKpiEntryReviewNo() {
+        long seq = kpiReviewRepository.count() + 1;
+        return String.format("REV-%d-%04d", currentYear(), seq);
     }
 
     public String nextAuditReviewId(String certCode) {

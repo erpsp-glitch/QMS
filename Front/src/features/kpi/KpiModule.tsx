@@ -28,6 +28,19 @@ const BRAND = '#280882';
 const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-600';
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1';
 
+const STATUS_STYLE: Record<string, string> = {
+  ACHIEVED: "bg-green-100 text-green-800 border border-green-300",
+  WARNING:  "bg-yellow-100 text-yellow-800 border border-yellow-300",
+  FAILED:   "bg-red-100 text-red-800 border border-red-300",
+  NOT_UPDATED: "bg-gray-100 text-gray-500 border border-gray-200",
+  BELOW_TARGET: "bg-red-100 text-red-800 border border-red-300",
+  PENDING: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+};
+const STATUS_EMOJI: Record<string, string> = {
+  ACHIEVED: "🟢", WARNING: "🟡", FAILED: "🔴", NOT_UPDATED: "⚪",
+  BELOW_TARGET: "🔴", PENDING: "🟡",
+};
+
 const TABS = [
   { id: 'dashboard',  label: 'Dashboard',          icon: 'fas fa-chart-pie'        },
   { id: 'objective',  label: 'KPI Objective Master',icon: 'fas fa-bullseye'         },
@@ -256,200 +269,894 @@ function KpiDashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   );
 }
 
+import { kpiEntryReviewApi } from '../../api/qms.api';
+
 // ── KPI Review ────────────────────────────────────────────────────────────────
 function KpiReview() {
-  const [masters, setMasters] = useState<KpiMaster[]>([]);
-  const [certs,   setCerts]   = useState<Certification[]>([]);
-  const [certId,  setCertId]  = useState<number | null>(null);
-  const [year,    setYear]    = useState(new Date().getFullYear());
-  const [month,   setMonth]   = useState(['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][new Date().getMonth()]);
-  const [entries, setEntries] = useState<KpiEntry[]>([]);
+  const [subTab, setSubTab] = useState<'dashboard' | 'performance'>('performance');
+
+  // Filter states
+  const [certs, setCerts] = useState<Certification[]>([]);
+  const [depts, setDepts] = useState<Department[]>([]);
+  const [filterCertId, setFilterCertId] = useState<string>('');
+  const [filterDeptId, setFilterDeptId] = useState<string>('');
+  const [filterYear, setFilterYear] = useState<string>(String(new Date().getFullYear()));
+  const [filterMonth, setFilterMonth] = useState<string>('');
+  const [filterCategory, setFilterCategory] = useState<string>('');
+  const [filterKpiName, setFilterKpiName] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterReviewer, setFilterReviewer] = useState<string>('');
+  const [filterReviewStatus, setFilterReviewStatus] = useState<string>('');
+
+  // Data states
+  const [kpiEntries, setKpiEntries] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  // Popups & Form state
+  const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  const [showDetailsPopup, setShowDetailsPopup] = useState(false);
+  const [showHistoryPopup, setShowHistoryPopup] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [historyList, setHistoryList] = useState<any[]>([]);
+  const [editingReview, setEditingReview] = useState<any>(null);
+
+  // Form Fields
+  const [formReviewerName, setFormReviewerName] = useState('');
+  const [formReviewDate, setFormReviewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formPerformanceRating, setFormPerformanceRating] = useState('Satisfactory');
+  const [formManagementComment, setFormManagementComment] = useState('');
+  const [formStrengths, setFormStrengths] = useState('');
+  const [formWeaknesses, setFormWeaknesses] = useState('');
+  const [formRootCause, setFormRootCause] = useState('');
+  const [formRiskLevel, setFormRiskLevel] = useState('Medium');
+  const [formImprovementOpportunity, setFormImprovementOpportunity] = useState('');
+  const [formCorrectiveAction, setFormCorrectiveAction] = useState('');
+  const [formPreventiveAction, setFormPreventiveAction] = useState('');
+  const [formResponsiblePerson, setFormResponsiblePerson] = useState('');
+  const [formTargetCompletionDate, setFormTargetCompletionDate] = useState('');
+  const [formPriority, setFormPriority] = useState('Medium');
+  const [formReviewDecision, setFormReviewDecision] = useState('Approved');
+  const [formNextReviewDate, setFormNextReviewDate] = useState('');
+  const [formAttachment, setFormAttachment] = useState<File | null>(null);
 
   const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const MONTH_LABELS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   useEffect(() => {
-    certApi.getAll().then((d: unknown) => setCerts(Array.isArray(d) ? d as Certification[] : [])).catch(() => {});
-    kpiApi.getMasters().then((d: unknown) => setMasters(Array.isArray(d) ? d as KpiMaster[] : [])).catch(() => {});
+    certApi.getAll().then((d: any) => setCerts(Array.isArray(d) ? d : [])).catch(() => {});
+    deptApi.getAll().then((d: any) => setDepts(Array.isArray(d) ? d : [])).catch(() => {});
+    loadDashboardStats();
+    loadKpiReviewData();
   }, []);
 
-  const loadEntries = async () => {
-    if (!certId) { alert('Select a certification first.'); return; }
+  const loadDashboardStats = () => {
+    kpiEntryReviewApi.getDashboardStats()
+      .then((res: any) => {
+        setDashboardStats(res);
+      })
+      .catch(() => {});
+  };
+
+  const loadKpiReviewData = async () => {
     setLoading(true);
     try {
-      const d = await kpiApi.getEntries(certId, year, month);
-      setEntries(Array.isArray(d) ? d as KpiEntry[] : []);
-    } catch { setEntries([]); }
-    finally { setLoading(false); }
+      // 1. Get all active reviews to check status
+      const revs = await kpiEntryReviewApi.getAll();
+      setReviews(Array.isArray(revs) ? revs : []);
+
+      // 2. Fetch KPI Entries for the selected certification (default to first cert if not selected)
+      if (certs.length > 0 || filterCertId) {
+        const certId = filterCertId ? Number(filterCertId) : certs[0]?.id;
+        if (certId) {
+          const yearNum = filterYear ? Number(filterYear) : new Date().getFullYear();
+          const entries = await kpiApi.getEntries(certId, yearNum, filterMonth || undefined);
+          setKpiEntries(Array.isArray(entries) ? entries : []);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getStatus = (entry: KpiEntry | null | undefined, master: KpiMaster | null | undefined): string => {
-    if (!entry || entry.actualValue === undefined || entry.actualValue === null) return 'NOT_ENTERED';
-    const actual = Number(entry.actualValue);
-    const target = Number(master?.targetValue || 0);
-    if (!target) return 'NOT_ENTERED';
-    if (actual >= target) return 'ACHIEVED';
-    if (actual >= target * 0.8) return 'WARNING';
-    return 'FAILED';
+  const handleSearch = () => {
+    loadKpiReviewData();
+    loadDashboardStats();
   };
 
-  const statusBadge = (status: string) => ({
-    ACHIEVED:   'bg-green-100 text-green-700',
-    WARNING:    'bg-yellow-100 text-yellow-700',
-    FAILED:     'bg-red-100 text-red-700',
-    NOT_ENTERED:'bg-gray-100 text-gray-500',
-  }[status] || 'bg-gray-100 text-gray-500');
+  const getLatestReviewForEntry = (entryId: number) => {
+    const entryReviews = reviews.filter(r => r.kpiEntry?.id === entryId);
+    if (entryReviews.length === 0) return null;
+    return entryReviews.reduce((latest, current) => {
+      return new Date(current.createdDate || current.createdAt) > new Date(latest.createdDate || latest.createdAt) ? current : latest;
+    }, entryReviews[0]);
+  };
 
-  const printReview = () => {
-    const w = window.open('', '_blank');
-    if (!w) return;
-    const certName = certs.find(c => c.id === certId)?.name || '';
-    w.document.write(`
-      <html><head><title>KPI Review Report</title>
-      <style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px;color:#222}h1{color:#280882;font-size:16px}h2{color:#555;font-size:12px;margin-top:0}table{width:100%;border-collapse:collapse}th{background:#280882;color:white;padding:7px;text-align:left;font-size:10px}td{border:1px solid #ddd;padding:6px 8px}tr:nth-child(even){background:#f5f3ff}.achieved{color:#065f46;font-weight:600}.warning{color:#92400e;font-weight:600}.failed{color:#991b1b;font-weight:600}</style>
-      </head><body>
-      <h1>KPI Review Report</h1>
-      <h2>${certName} | ${MONTH_LABELS[Number(month)-1]} ${year}</h2>
-      <table>
-        <thead><tr><th>KPI Code</th><th>KPI Name</th><th>Type</th><th>Target</th><th>Actual</th><th>Achievement %</th><th>Variance</th><th>Status</th></tr></thead>
-        <tbody>
-          ${masters.map(m => {
-            const entry = entries.find(e => e.kpiMaster?.id === m.id || e.kpiCode === m.kpiCode);
-            const actual = entry?.actualValue ?? '—';
-            const target = m.targetValue;
-            const achPct = entry?.actualValue != null && target ? ((Number(entry.actualValue) / Number(target)) * 100).toFixed(1) : '—';
-            const variance = entry?.actualValue != null && target != null ? (Number(entry.actualValue) - Number(target)).toFixed(2) : '—';
-            const status = getStatus(entry, m);
-            return `<tr>
-              <td>${m.kpiCode}</td><td>${m.kpiObjective || m.title}</td><td>${m.kpiType}</td>
-              <td>${target} ${m.unit}</td>
-              <td>${actual}</td>
-              <td class="${status.toLowerCase()}">${achPct}${achPct !== '—' ? '%' : ''}</td>
-              <td>${variance}</td>
-              <td class="${status.toLowerCase()}">${status}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
-      <p style="font-size:9px;color:#999;margin-top:16px">Generated: ${new Date().toLocaleDateString('en-IN')}</p>
-      </body></html>
-    `);
-    w.document.close(); w.print();
+  // Filter & match entries
+  const filteredEntries = kpiEntries.filter(entry => {
+    const master = entry.kpiMaster || {};
+    const latestReview = getLatestReviewForEntry(entry.id);
+
+    // Filter rules
+    if (filterDeptId && String(master.department?.id) !== filterDeptId) return false;
+    if (filterCategory && master.kpiCategory !== filterCategory) return false;
+    if (filterKpiName && !master.kpiObjective?.toLowerCase().includes(filterKpiName.toLowerCase()) && !master.kpiCode?.toLowerCase().includes(filterKpiName.toLowerCase())) return false;
+    if (filterStatus && entry.status !== filterStatus) return false;
+    if (filterReviewer && latestReview?.reviewerId !== filterReviewer) return false;
+    
+    const revStatus = latestReview?.reviewStatus || 'PENDING_REVIEW';
+    if (filterReviewStatus && revStatus !== filterReviewStatus) return false;
+
+    return true;
+  });
+
+  const openAddReview = (entry: any) => {
+    setSelectedEntry(entry);
+    setEditingReview(null);
+    // Reset form fields
+    setFormReviewerName('');
+    setFormReviewDate(new Date().toISOString().split('T')[0]);
+    setFormPerformanceRating('Satisfactory');
+    setFormManagementComment('');
+    setFormStrengths('');
+    setFormWeaknesses('');
+    setFormRootCause('');
+    setFormRiskLevel('Medium');
+    setFormImprovementOpportunity('');
+    setFormCorrectiveAction('');
+    setFormPreventiveAction('');
+    setFormResponsiblePerson('');
+    setFormTargetCompletionDate('');
+    setFormPriority('Medium');
+    setFormReviewDecision('Approved');
+    setFormNextReviewDate('');
+    setFormAttachment(null);
+    setShowReviewForm(true);
+  };
+
+  const openEditReview = (entry: any, review: any) => {
+    setSelectedEntry(entry);
+    setEditingReview(review);
+    // Populate form fields
+    setFormReviewerName(review.reviewerId || '');
+    setFormReviewDate(review.reviewDate || new Date().toISOString().split('T')[0]);
+    setFormPerformanceRating(review.performanceRating || 'Satisfactory');
+    setFormManagementComment(review.managementComment || '');
+    setFormStrengths(review.strengths || '');
+    setFormWeaknesses(review.weaknesses || '');
+    setFormRootCause(review.rootCause || '');
+    setFormImprovementOpportunity(review.improvementOpportunity || '');
+    setFormCorrectiveAction(review.correctiveAction || '');
+    setFormPreventiveAction(review.preventiveAction || '');
+    setFormResponsiblePerson(review.responsiblePerson || '');
+    setFormTargetCompletionDate(review.targetCompletionDate || '');
+    setFormPriority(review.priority || 'Medium');
+    setFormReviewDecision(review.reviewDecision || 'Approved');
+    setFormNextReviewDate(review.nextReviewDate || '');
+    setShowReviewForm(true);
+  };
+
+  const viewDetails = (entry: any) => {
+    setSelectedEntry(entry);
+    setShowDetailsPopup(true);
+  };
+
+  const viewHistory = async (entry: any) => {
+    setSelectedEntry(entry);
+    try {
+      const history = await kpiEntryReviewApi.getHistory(entry.id);
+      setHistoryList(Array.isArray(history) ? history : []);
+      setShowHistoryPopup(true);
+    } catch {
+      alert("Failed to load review history.");
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    await saveReview('UNDER_REVIEW');
+  };
+
+  const handleSubmitReview = async () => {
+    await saveReview('APPROVED');
+  };
+
+  const handleCompleteReview = async (reviewId: number) => {
+    if (!window.confirm("Are you sure you want to complete this review? This will lock the KPI entry record.")) return;
+    try {
+      await kpiEntryReviewApi.complete(reviewId);
+      alert("Review completed and finalized.");
+      loadKpiReviewData();
+    } catch {
+      alert("Failed to complete review.");
+    }
+  };
+
+  const saveReview = async (status: string) => {
+    if (!formReviewerName) {
+      alert("Reviewer Name is required.");
+      return;
+    }
+    const data = {
+      kpiEntry: { id: selectedEntry.id },
+      reviewerId: formReviewerName,
+      reviewDate: formReviewDate,
+      performanceRating: formPerformanceRating,
+      managementComment: formManagementComment,
+      strengths: formStrengths,
+      weaknesses: formWeaknesses,
+      rootCause: formRootCause,
+      improvementOpportunity: formImprovementOpportunity,
+      correctiveAction: formCorrectiveAction,
+      preventiveAction: formPreventiveAction,
+      responsiblePerson: formResponsiblePerson,
+      targetCompletionDate: formTargetCompletionDate || null,
+      priority: formPriority,
+      reviewDecision: formReviewDecision,
+      nextReviewDate: formNextReviewDate || null,
+      reviewStatus: status,
+      achievementPercentage: selectedEntry.achievementPercent,
+      attachmentPath: formAttachment ? formAttachment.name : (editingReview?.attachmentPath || '')
+    };
+
+    try {
+      if (editingReview) {
+        await kpiEntryReviewApi.update(editingReview.id, data);
+        alert("KPI Review updated successfully.");
+      } else {
+        await kpiEntryReviewApi.create(data);
+        alert("KPI Review created successfully.");
+      }
+      setShowReviewForm(false);
+      loadKpiReviewData();
+    } catch (e: any) {
+      alert("Failed to save review: " + (e.response?.data?.message || e.message));
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: number) => {
+    if (!window.confirm("Are you sure you want to delete this review? (Admin only)")) return;
+    try {
+      await kpiEntryReviewApi.delete(reviewId);
+      alert("Review deleted successfully.");
+      loadKpiReviewData();
+    } catch {
+      alert("Delete failed. Please verify admin privileges.");
+    }
+  };
+
+  // Review decision badge style
+  const decisionBadge = (decision: string) => {
+    switch (decision?.toUpperCase()) {
+      case 'APPROVED': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+      case 'NEEDS_IMPROVEMENT': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'UNDER_MONITORING': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'ESCALATED': return 'bg-rose-100 text-rose-800 border-rose-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  // Review Status Colors
+  const reviewStatusColor = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case 'PENDING_REVIEW': return 'bg-yellow-100 text-yellow-800 border border-yellow-300';
+      case 'UNDER_REVIEW': return 'bg-orange-100 text-orange-800 border border-orange-300';
+      case 'COMPLETED': return 'bg-emerald-100 text-emerald-800 border border-emerald-300';
+      case 'APPROVED': return 'bg-green-100 text-green-800 border border-green-300';
+      case 'REJECTED': return 'bg-red-100 text-red-800 border border-red-300';
+      case 'ESCALATED': return 'bg-purple-100 text-purple-800 border border-purple-300';
+      default: return 'bg-gray-100 text-gray-500 border border-gray-200';
+    }
+  };
+
+  const getTrendDataPoints = (kpiMasterId: number) => {
+    return kpiEntries
+      .filter(e => e.kpiMaster?.id === kpiMasterId)
+      .map(e => ({ month: e.month, value: e.actualValue }));
   };
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-3.5 flex flex-wrap gap-3 items-center">
-        <select value={certId ?? ''} onChange={e => setCertId(e.target.value ? Number(e.target.value) : null)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-          <option value="">Select Certification</option>
-          {certs.map((c: Certification) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
-        </select>
-        <select value={month} onChange={e => setMonth(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-          {MONTHS.map((m, i) => <option key={m} value={m}>{MONTH_LABELS[i]}</option>)}
-        </select>
-
-        <select value={year} onChange={e => setYear(Number(e.target.value))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm">
-          {[2024, 2025, 2026, 2027].map(y => <option key={y}>{y}</option>)}
-        </select>
-        <button onClick={loadEntries} disabled={loading} className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-60" style={{ background: BRAND }}>
-          {loading ? <><i className="fas fa-spinner fa-spin" />Loading...</> : <><i className="fas fa-search" />Load KPI Review</>}
+      {/* Sub-tabs */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2 flex gap-2">
+        <button
+          onClick={() => setSubTab('performance')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+            subTab === 'performance' ? 'bg-green-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <i className="fas fa-tasks mr-2" /> Perform KPI Reviews
         </button>
-        {entries.length > 0 && (
-          <button onClick={printReview} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-red-300 text-red-700 text-sm hover:bg-red-50">
-            <i className="fas fa-file-pdf" /> PDF
-          </button>
-        )}
+        <button
+          onClick={() => setSubTab('dashboard')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+            subTab === 'dashboard' ? 'bg-green-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <i className="fas fa-chart-pie mr-2" /> KPI Review Dashboard
+        </button>
       </div>
 
-      {/* Summary cards */}
-      {entries.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Achieved',    count: masters.filter(m => getStatus(entries.find(e => e.kpiMaster?.id === m.id), m) === 'ACHIEVED').length,    color: '#10b981', icon: 'fas fa-check-circle'       },
-            { label: 'Warning',     count: masters.filter(m => getStatus(entries.find(e => e.kpiMaster?.id === m.id), m) === 'WARNING').length,     color: '#f59e0b', icon: 'fas fa-exclamation-circle' },
-            { label: 'Failed',      count: masters.filter(m => getStatus(entries.find(e => e.kpiMaster?.id === m.id), m) === 'FAILED').length,      color: '#ef4444', icon: 'fas fa-times-circle'       },
-            { label: 'Not Entered', count: masters.filter(m => getStatus(entries.find(e => e.kpiMaster?.id === m.id), m) === 'NOT_ENTERED').length, color: '#6b7280', icon: 'fas fa-minus-circle'       },
-          ].map(k => (
-            <div key={k.label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
-              <div className="w-8 h-8 mx-auto rounded-full flex items-center justify-center mb-1.5" style={{ background: `${k.color}18` }}>
-                <i className={`${k.icon} text-sm`} style={{ color: k.color }} />
+      {/* Perform Reviews Mode */}
+      {subTab === 'performance' && (
+        <>
+          {/* Filters */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div>
+                <label className={labelCls}>Certification</label>
+                <select value={filterCertId} onChange={e => setFilterCertId(e.target.value)} className={inputCls}>
+                  <option value="">Select Certification</option>
+                  {certs.map((c: Certification) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
+                </select>
               </div>
-              <p className="text-xl font-bold" style={{ color: k.color }}>{k.count}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{k.label}</p>
+              <div>
+                <label className={labelCls}>Department</label>
+                <select value={filterDeptId} onChange={e => setFilterDeptId(e.target.value)} className={inputCls}>
+                  <option value="">Select Department</option>
+                  {depts.map((d: Department) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Year</label>
+                <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className={inputCls}>
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Month</label>
+                <select value={filterMonth} onChange={e => setFilterMonth(e.target.value)} className={inputCls}>
+                  <option value="">All Months</option>
+                  {MONTHS.map((m, idx) => <option key={m} value={m}>{MONTH_LABELS[idx]}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>KPI Category</label>
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className={inputCls}>
+                  <option value="">All Categories</option>
+                  <option value="QUALITY">Quality</option>
+                  <option value="DELIVERY">Delivery</option>
+                  <option value="PRODUCTION">Production</option>
+                  <option value="HR">HR</option>
+                  <option value="PURCHASE">Purchase</option>
+                  <option value="MAINTENANCE">Maintenance</option>
+                  <option value="SAFETY">Safety</option>
+                  <option value="SALES">Sales</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>KPI Name/Code</label>
+                <input value={filterKpiName} onChange={e => setFilterKpiName(e.target.value)} placeholder="Search name/code" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Status</label>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inputCls}>
+                  <option value="">All Statuses</option>
+                  <option value="ACHIEVED">Achieved</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="FAILED">Failed</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Reviewer</label>
+                <input value={filterReviewer} onChange={e => setFilterReviewer(e.target.value)} placeholder="Reviewer Name" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Review Status</label>
+                <select value={filterReviewStatus} onChange={e => setFilterReviewStatus(e.target.value)} className={inputCls}>
+                  <option value="">All Review Statuses</option>
+                  <option value="PENDING_REVIEW">Pending Review</option>
+                  <option value="UNDER_REVIEW">Under Review</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="ESCALATED">Escalated</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button onClick={handleSearch} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-white font-semibold shadow-sm transition-all" style={{ background: BRAND }}>
+                  {loading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-search" />} Search
+                </button>
+              </div>
             </div>
-          ))}
+          </div>
+
+          {/* KPI Review Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+            {filteredEntries.length === 0 ? (
+              <div className="py-16 text-center text-gray-400">
+                <i className="fas fa-folder-open text-4xl mb-3 opacity-20" /><br />
+                No matching submitted KPI records found for review.
+              </div>
+            ) : (
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-100">
+                    <th className="px-4 py-3 font-semibold">KPI Code</th>
+                    <th className="px-4 py-3 font-semibold">KPI Name</th>
+                    <th className="px-4 py-3 font-semibold">Dept</th>
+                    <th className="px-4 py-3 font-semibold">Frequency</th>
+                    <th className="px-4 py-3 font-semibold">Target</th>
+                    <th className="px-4 py-3 font-semibold">Actual</th>
+                    <th className="px-4 py-3 font-semibold">Achievement%</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Rev Status</th>
+                    <th className="px-4 py-3 font-semibold">Decision</th>
+                    <th className="px-4 py-3 font-semibold">Reviewer</th>
+                    <th className="px-4 py-3 font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredEntries.map(entry => {
+                    const master = entry.kpiMaster || {};
+                    const latestReview = getLatestReviewForEntry(entry.id);
+                    const revStatus = latestReview?.reviewStatus || 'PENDING_REVIEW';
+                    return (
+                      <tr key={entry.id} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-3 font-mono text-xs font-bold text-green-700">{master.kpiCode}</td>
+                        <td className="px-4 py-3 font-medium text-gray-800">{master.kpiObjective}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{master.department?.name || '—'}</td>
+                        <td className="px-4 py-3 text-xs"><span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">{master.frequency}</span></td>
+                        <td className="px-4 py-3 font-semibold text-gray-700">{master.targetValue} {master.unit}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">{entry.actualValue ?? '—'}</td>
+                        <td className="px-4 py-3 font-bold text-green-600">{entry.achievementPercent ? `${entry.achievementPercent}%` : '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLE[entry.status]}`}>
+                            {STATUS_EMOJI[entry.status]} {entry.status?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${reviewStatusColor(revStatus)}`}>
+                            {revStatus.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {latestReview?.reviewDecision ? (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${decisionBadge(latestReview.reviewDecision)}`}>
+                              {latestReview.reviewDecision.replace('_', ' ')}
+                            </span>
+                          ) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{latestReview?.reviewerId || '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <button onClick={() => viewDetails(entry)} className="p-1 rounded hover:bg-gray-100 text-gray-600" title="View Details"><i className="fas fa-eye text-xs" /></button>
+                            <button onClick={() => viewHistory(entry)} className="p-1 rounded hover:bg-gray-100 text-blue-600" title="View History"><i className="fas fa-history text-xs" /></button>
+                            {revStatus !== 'COMPLETED' ? (
+                              <>
+                                {latestReview ? (
+                                  <button onClick={() => openEditReview(entry, latestReview)} className="p-1 rounded hover:bg-gray-100 text-amber-600" title="Edit Review"><i className="fas fa-edit text-xs" /></button>
+                                ) : (
+                                  <button onClick={() => openAddReview(entry)} className="p-1 rounded hover:bg-gray-100 text-green-600" title="Add Review"><i className="fas fa-plus text-xs" /></button>
+                                )}
+                                {latestReview && (
+                                  <button onClick={() => handleCompleteReview(latestReview.id)} className="p-1 rounded hover:bg-gray-100 text-emerald-600" title="Complete Review"><i className="fas fa-check-circle text-xs" /></button>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-xs text-gray-400 font-semibold px-2 py-1"><i className="fas fa-lock" /> Locked</span>
+                            )}
+                            {latestReview && (
+                              <button onClick={() => handleDeleteReview(latestReview.id)} className="p-1 rounded hover:bg-red-50 text-red-500" title="Delete Review"><i className="fas fa-trash text-xs" /></button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Dashboard Mode */}
+      {subTab === 'dashboard' && dashboardStats && (
+        <div className="space-y-6">
+          {/* Card Summary Widgets */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
+              <div className="w-10 h-10 mx-auto rounded-full bg-blue-100 flex items-center justify-center mb-2"><i className="fas fa-chart-line text-blue-600 text-sm" /></div>
+              <p className="text-2xl font-bold text-gray-800">{dashboardStats.totalKpis}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Total KPIs</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
+              <div className="w-10 h-10 mx-auto rounded-full bg-amber-100 flex items-center justify-center mb-2"><i className="fas fa-clock text-amber-600 text-sm" /></div>
+              <p className="text-2xl font-bold text-gray-800">{dashboardStats.pendingReviews}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Pending Reviews</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
+              <div className="w-10 h-10 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-2"><i className="fas fa-check-circle text-green-600 text-sm" /></div>
+              <p className="text-2xl font-bold text-gray-800">{dashboardStats.completedReviews}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Completed Reviews</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 text-center">
+              <div className="w-10 h-10 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-2"><i className="fas fa-exclamation-circle text-red-600 text-sm" /></div>
+              <p className="text-2xl font-bold text-gray-800">{dashboardStats.overdueActions}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Overdue Actions</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dept Review Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-4"><i className="fas fa-building mr-2 text-green-600" />Department-wise Review Status</h3>
+              {Object.keys(dashboardStats.departmentStats || {}).length === 0 ? (
+                <p className="text-gray-400 text-xs text-center py-6">No department statistics available.</p>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(dashboardStats.departmentStats).map(([dept, states]: any) => {
+                    const completed = states.COMPLETED || states.APPROVED || 0;
+                    const pending = states.PENDING_REVIEW || states.UNDER_REVIEW || 0;
+                    const total = completed + pending;
+                    const pct = total > 0 ? (completed / total) * 100 : 0;
+                    return (
+                      <div key={dept} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold text-gray-600">
+                          <span>{dept}</span>
+                          <span>{completed} / {total} Completed</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="bg-green-500 h-2 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Cert Review Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-4"><i className="fas fa-certificate mr-2 text-green-600" />Certification-wise Review Status</h3>
+              {Object.keys(dashboardStats.certificationStats || {}).length === 0 ? (
+                <p className="text-gray-400 text-xs text-center py-6">No certification statistics available.</p>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(dashboardStats.certificationStats).map(([cert, states]: any) => {
+                    const completed = states.COMPLETED || states.APPROVED || 0;
+                    const total = Object.values(states).reduce((a: any, b: any) => a + b, 0) as number;
+                    const pct = total > 0 ? (completed / total) * 100 : 0;
+                    return (
+                      <div key={cert} className="space-y-1">
+                        <div className="flex justify-between text-xs font-semibold text-gray-600">
+                          <span>{cert}</span>
+                          <span>{completed} / {total} Reviews</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2">
+                          <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Performance Distribution */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-4"><i className="fas fa-chart-bar mr-2 text-green-600" />KPI Performance Distribution</h3>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                  <p className="text-xl font-bold text-green-600">{dashboardStats.performanceDistribution?.ACHIEVED || 0}</p>
+                  <p className="text-xs text-green-800 font-semibold mt-0.5">Achieved</p>
+                </div>
+                <div className="bg-yellow-50 rounded-xl p-3 border border-yellow-100">
+                  <p className="text-xl font-bold text-yellow-600">{dashboardStats.performanceDistribution?.WARNING || 0}</p>
+                  <p className="text-xs text-yellow-800 font-semibold mt-0.5">Warning</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-3 border border-red-100">
+                  <p className="text-xl font-bold text-red-600">{dashboardStats.performanceDistribution?.FAILED || 0}</p>
+                  <p className="text-xs text-red-800 font-semibold mt-0.5">Failed</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Closure Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+              <h3 className="text-sm font-bold text-gray-700 mb-4"><i className="fas fa-tools mr-2 text-green-600" />KPI Action Closure Status</h3>
+              <div className="flex gap-4 items-center justify-around">
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-red-600">{dashboardStats.actionClosureStatus?.OPEN || 0}</span>
+                  <span className="block text-xs text-gray-500 font-medium">Open</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-blue-600">{dashboardStats.actionClosureStatus?.IN_PROGRESS || 0}</span>
+                  <span className="block text-xs text-gray-500 font-medium">In Progress</span>
+                </div>
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-green-600">{dashboardStats.actionClosureStatus?.CLOSED || dashboardStats.actionClosureStatus?.VERIFIED || 0}</span>
+                  <span className="block text-xs text-gray-500 font-medium">Closed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Upcoming Review Calendar */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-4"><i className="fas fa-calendar-alt mr-2 text-green-600" />Upcoming KPI Review Calendar</h3>
+            {(!dashboardStats.upcomingCalendar || dashboardStats.upcomingCalendar.length === 0) ? (
+              <p className="text-gray-400 text-xs text-center py-6">No upcoming KPI reviews scheduled.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className="bg-gray-50 text-gray-500 uppercase border-b border-gray-100">
+                      <th className="px-4 py-2 font-semibold">KPI Code</th>
+                      <th className="px-4 py-2 font-semibold">KPI Name</th>
+                      <th className="px-4 py-2 font-semibold">Scheduled Date</th>
+                      <th className="px-4 py-2 font-semibold">Assigned Reviewer</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {dashboardStats.upcomingCalendar.map((cal: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        <td className="px-4 py-2 font-mono font-bold text-green-700">{cal.kpiCode}</td>
+                        <td className="px-4 py-2 font-medium text-gray-800">{cal.kpiName}</td>
+                        <td className="px-4 py-2 font-semibold text-gray-600">{cal.nextReviewDate}</td>
+                        <td className="px-4 py-2 text-gray-600">{cal.reviewer || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* KPI Review Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        {masters.length === 0 ? (
-          <div className="py-12 text-center text-gray-400">
-            <i className="fas fa-layer-group text-3xl mb-2 block opacity-20" />
-            No KPI masters defined.
+      {/* Review Form Modal */}
+      {showReviewForm && selectedEntry && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b rounded-t-2xl flex items-center justify-between text-white" style={{ background: BRAND }}>
+              <div>
+                <h3 className="text-lg font-bold">{editingReview ? "Edit KPI Review" : "Add KPI Review"}</h3>
+                <p className="text-xs text-gray-200 mt-0.5">KPI Code: {selectedEntry.kpiMaster?.kpiCode} | {selectedEntry.kpiMaster?.kpiObjective}</p>
+              </div>
+              <button onClick={() => setShowReviewForm(false)} className="text-white/70 hover:text-white"><i className="fas fa-times text-lg" /></button>
+            </div>
+            
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className={labelCls}>Reviewer Name *</label>
+                <input value={formReviewerName} onChange={e => setFormReviewerName(e.target.value)} placeholder="Reviewer name" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Review Date *</label>
+                <input type="date" value={formReviewDate} onChange={e => setFormReviewDate(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Performance Rating</label>
+                <select value={formPerformanceRating} onChange={e => setFormPerformanceRating(e.target.value)} className={inputCls}>
+                  <option value="Excellent">Excellent</option>
+                  <option value="Satisfactory">Satisfactory</option>
+                  <option value="Needs Improvement">Needs Improvement</option>
+                  <option value="Unsatisfactory">Unsatisfactory</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Risk Level</label>
+                <select value={formRiskLevel} onChange={e => setFormRiskLevel(e.target.value)} className={inputCls}>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Review Decision</label>
+                <select value={formReviewDecision} onChange={e => setFormReviewDecision(e.target.value)} className={inputCls}>
+                  <option value="Approved">Approved</option>
+                  <option value="Needs Improvement">Needs Improvement</option>
+                  <option value="Under Monitoring">Under Monitoring</option>
+                  <option value="Escalated">Escalated</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Next Review Date</label>
+                <input type="date" value={formNextReviewDate} onChange={e => setFormNextReviewDate(e.target.value)} className={inputCls} />
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Management Comments</label>
+                <textarea value={formManagementComment} onChange={e => setFormManagementComment(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="Enter general comments..." />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Strengths</label>
+                <textarea value={formStrengths} onChange={e => setFormStrengths(e.target.value)} rows={1} className={`${inputCls} resize-none`} placeholder="Key strengths observed..." />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Weaknesses</label>
+                <textarea value={formWeaknesses} onChange={e => setFormWeaknesses(e.target.value)} rows={1} className={`${inputCls} resize-none`} placeholder="Area of concern..." />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Root Cause</label>
+                <textarea value={formRootCause} onChange={e => setFormRootCause(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="Why was the target missed / variance observed? (5-Why analysis)..." />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Improvement Opportunity</label>
+                <textarea value={formImprovementOpportunity} onChange={e => setFormImprovementOpportunity(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="Opportunities for improvement..." />
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3 border-t border-gray-100 pt-3">
+                <h4 className="text-xs font-bold text-gray-700 mb-2">Action Assignment (CAPA)</h4>
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Corrective Action Required</label>
+                <textarea value={formCorrectiveAction} onChange={e => setFormCorrectiveAction(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="Actions to correct the deviation..." />
+              </div>
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className={labelCls}>Preventive Action Required</label>
+                <textarea value={formPreventiveAction} onChange={e => setFormPreventiveAction(e.target.value)} rows={2} className={`${inputCls} resize-none`} placeholder="Actions to prevent recurrence..." />
+              </div>
+              <div>
+                <label className={labelCls}>Responsible Person</label>
+                <input value={formResponsiblePerson} onChange={e => setFormResponsiblePerson(e.target.value)} placeholder="Action owner" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Action Target Completion Date</label>
+                <input type="date" value={formTargetCompletionDate} onChange={e => setFormTargetCompletionDate(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Priority</label>
+                <select value={formPriority} onChange={e => setFormPriority(e.target.value)} className={inputCls}>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3 border-t border-gray-100 pt-3">
+                <label className={labelCls}>Upload Supporting Documents</label>
+                <input type="file" onChange={e => setFormAttachment(e.target.files ? e.target.files[0] : null)} className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                {editingReview?.attachmentPath && (
+                  <p className="text-xs text-gray-500 mt-1"><i className="fas fa-paperclip mr-1" /> Current Attachment: {editingReview.attachmentPath}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-wrap gap-2 justify-end">
+              <button onClick={() => setShowReviewForm(false)} className="px-4 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-100">Cancel</button>
+              <button onClick={handleSaveDraft} className="px-4 py-2 border border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg text-sm font-semibold">Save Draft</button>
+              <button onClick={handleSubmitReview} className="px-5 py-2 text-white bg-green-600 hover:bg-green-700 rounded-lg text-sm font-semibold">Submit Review</button>
+            </div>
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 text-gray-500 text-xs uppercase">
-                {['KPI Code', 'KPI Name', 'Frequency', 'Target', 'Actual', 'Achievement %', 'Variance', 'Status', 'Trend'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {masters.map((m: KpiMaster) => {
-                const entry = entries.find(e => e.kpiMaster?.id === m.id || e.kpiCode === m.kpiCode);
-                const actual = entry?.actualValue ?? null;
-                const target = m.targetValue != null ? Number(m.targetValue) : null;
-                const achPct = actual != null && target ? ((Number(actual) / target) * 100).toFixed(1) : null;
-                const variance = actual != null && target != null ? (Number(actual) - target) : null;
-                const status = getStatus(entry, m);
-                const trend =
-actual!=null && target!=null
-? Number(actual)>=Number(target)
-?'↑'
-:'↓'
-:'—';
-                return (
-                  <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs font-bold" style={{ color: BRAND }}>{m.kpiCode}</td>
-                    <td className="px-4 py-3 font-medium text-gray-800">{m.kpiObjective || m.title}</td>
-                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">{m.frequency}</span></td>
-                    <td className="px-4 py-3 font-semibold text-gray-700">{target} <span className="text-gray-400 text-xs font-normal">{m.unit}</span></td>
-                    <td className="px-4 py-3 font-semibold">{actual ?? <span className="text-gray-300 text-xs">—</span>}</td>
-                    <td className="px-4 py-3">
-                      {achPct ? (
-                        <span className={`font-bold ${Number(achPct) >= 100 ? 'text-green-600' : Number(achPct) >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {achPct}%
+        </div>
+      )}
+
+      {/* KPI Details Popup */}
+      {showDetailsPopup && selectedEntry && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b flex items-center justify-between text-white" style={{ background: BRAND }}>
+              <h3 className="text-lg font-bold">KPI Details & Trend: {selectedEntry.kpiMaster?.kpiCode}</h3>
+              <button onClick={() => setShowDetailsPopup(false)} className="text-white/70 hover:text-white"><i className="fas fa-times text-lg" /></button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-50 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500">Target Value</p>
+                  <p className="text-lg font-bold text-gray-800">{selectedEntry.kpiMaster?.targetValue} {selectedEntry.kpiMaster?.unit}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500">Actual Value</p>
+                  <p className="text-lg font-bold text-gray-800">{selectedEntry.actualValue ?? '—'}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500">Achievement %</p>
+                  <p className="text-lg font-bold text-green-600">{selectedEntry.achievementPercent ? `${selectedEntry.achievementPercent}%` : '—'}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg text-center">
+                  <p className="text-xs text-gray-500">Owner</p>
+                  <p className="text-xs font-bold text-gray-800 truncate">{selectedEntry.enteredBy || '—'}</p>
+                </div>
+              </div>
+
+              {/* Simple Sparkline/Trend graph representation */}
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50/50">
+                <h4 className="text-xs font-bold text-gray-700 mb-3"><i className="fas fa-chart-line mr-2 text-green-600" />Monthly Performance Trend</h4>
+                <div className="flex gap-4 items-end h-28 pt-4 justify-between border-b border-gray-300">
+                  {getTrendDataPoints(selectedEntry.kpiMaster?.id).map((pt, idx) => {
+                    const val = Number(pt.value || 0);
+                    const maxVal = Math.max(...getTrendDataPoints(selectedEntry.kpiMaster?.id).map(p => Number(p.value || 0)), 1);
+                    const barHeight = (val / maxVal) * 80; // max 80px
+                    return (
+                      <div key={idx} className="flex flex-col items-center flex-1">
+                        <span className="text-[10px] text-gray-500 mb-1 font-semibold">{val}</span>
+                        <div className="w-8 bg-green-500 hover:bg-green-600 rounded-t transition-all" style={{ height: `${barHeight}px` }} />
+                        <span className="text-[9px] text-gray-400 mt-1 uppercase font-bold">{pt.month}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Supporting evidence */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-gray-700">Evidence & Supporting Documents</h4>
+                {selectedEntry.remarks ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 leading-relaxed">
+                    <i className="fas fa-comment-dots mr-2 text-blue-500" />
+                    <strong>Monthly entry remarks:</strong> {selectedEntry.remarks}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">No entry comments or remarks provided.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Popup */}
+      {showHistoryPopup && selectedEntry && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b flex items-center justify-between text-white" style={{ background: BRAND }}>
+              <div>
+                <h3 className="text-lg font-bold">Review History</h3>
+                <p className="text-xs text-gray-200 mt-0.5">{selectedEntry.kpiMaster?.kpiCode} — {selectedEntry.kpiMaster?.kpiObjective}</p>
+              </div>
+              <button onClick={() => setShowHistoryPopup(false)} className="text-white/70 hover:text-white"><i className="fas fa-times text-lg" /></button>
+            </div>
+            <div className="p-6">
+              {historyList.length === 0 ? (
+                <p className="text-center py-8 text-sm text-gray-400 italic">No previous reviews recorded for this cycle.</p>
+              ) : (
+                <div className="space-y-4">
+                  {historyList.map((hist) => (
+                    <div key={hist.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50/50 relative">
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${reviewStatusColor(hist.reviewStatus)}`}>
+                          {hist.reviewStatus?.replace('_', ' ')}
                         </span>
-                      ) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {variance != null ? (
-                        <span className={variance >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                          {variance >= 0 ? '+' : ''}{variance.toFixed(2)}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${decisionBadge(hist.reviewDecision)}`}>
+                          {hist.reviewDecision?.replace('_', ' ')}
                         </span>
-                      ) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(status)}`}>{status.replace('_', ' ')}</span>
-                    </td>
-                    <td className="px-4 py-3 text-lg font-bold" style={{ color: trend === '↑' ? '#10b981' : trend === '↓' ? '#ef4444' : '#9ca3af' }}>
-                      {trend}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                      </div>
+                      <h4 className="text-xs font-bold text-green-700">Review: {hist.reviewNo}</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">Reviewed by: <span className="font-semibold text-gray-700">{hist.reviewerId}</span> on {hist.reviewDate}</p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 text-xs">
+                        {hist.managementComment && (
+                          <div className="col-span-2">
+                            <span className="text-gray-400 font-semibold block">Comments:</span>
+                            <span className="text-gray-700">{hist.managementComment}</span>
+                          </div>
+                        )}
+                        {hist.correctiveAction && (
+                          <div>
+                            <span className="text-rose-500 font-bold block">Corrective Action Assigned:</span>
+                            <span className="text-gray-700">{hist.correctiveAction}</span>
+                            {hist.responsiblePerson && <span className="block text-[10px] text-gray-500 mt-0.5">Owner: {hist.responsiblePerson} | Due: {hist.targetCompletionDate}</span>}
+                          </div>
+                        )}
+                        {hist.preventiveAction && (
+                          <div>
+                            <span className="text-blue-500 font-bold block">Preventive Action:</span>
+                            <span className="text-gray-700">{hist.preventiveAction}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 // ── KPI CAPA (Corrective Action) ──────────────────────────────────────────────
 const CAPA_STATUSES = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'VERIFIED', 'CLOSED'];

@@ -5,6 +5,7 @@ import com.ERP.QMS.model.KpiMaster;
 import com.ERP.QMS.repository.CertificationRepository;
 import com.ERP.QMS.repository.KpiEntryRepository;
 import com.ERP.QMS.repository.KpiMasterRepository;
+import com.ERP.QMS.repository.KpiReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class KpiService {
     private final KpiMasterRepository kpiMasterRepository;
     private final KpiEntryRepository kpiEntryRepository;
     private final CertificationRepository certificationRepository;
+    private final KpiReviewRepository kpiReviewRepository;
     private final SequenceService sequenceService;
 
     // ===== KPI Master =====
@@ -105,6 +107,14 @@ public class KpiService {
 
     @Transactional
     public KpiEntry saveEntry(KpiEntry entry) {
+        if (entry.getId() != null) {
+            boolean hasCompletedReview = kpiReviewRepository.findByKpiEntryId(entry.getId()).stream()
+                .anyMatch(r -> "COMPLETED".equalsIgnoreCase(r.getReviewStatus()));
+            if (hasCompletedReview) {
+                throw new RuntimeException("KPI Entry is locked and cannot be edited because its review has been completed.");
+            }
+        }
+
         // Resolve the full KpiMaster first so targetValue and direction are available
         KpiMaster master = null;
         if (entry.getKpiMaster() != null && entry.getKpiMaster().getId() != null) {
@@ -147,6 +157,11 @@ public class KpiService {
         return kpiEntryRepository.findByKpiMasterIdAndYearAndMonth(
             entry.getKpiMaster().getId(), entry.getYear(), entry.getMonth()
         ).map(existing -> {
+            boolean hasCompletedReview = kpiReviewRepository.findByKpiEntryId(existing.getId()).stream()
+                .anyMatch(r -> "COMPLETED".equalsIgnoreCase(r.getReviewStatus()));
+            if (hasCompletedReview) {
+                throw new RuntimeException("KPI Entry is locked and cannot be edited because its review has been completed.");
+            }
             existing.setActualValue(entry.getActualValue());
             existing.setAchievementPercent(entry.getAchievementPercent());
             existing.setVariance(entry.getVariance());
