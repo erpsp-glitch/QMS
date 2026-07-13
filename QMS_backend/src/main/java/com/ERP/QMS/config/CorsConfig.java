@@ -1,17 +1,6 @@
 package com.ERP.QMS.config;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-@Configuration
-public class CorsConfig implements WebMvcConfigurer {
-
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOrigins("*") // In production, replace with specific origins
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
-    }
-}
+// CorsConfig is intentionally minimal.
+// The authoritative CORS configuration is handled by SecurityConfig#corsConfigurationSource()
+// which reads allowed origins from the `qms.cors.allowed-origins` property.
+// This class is kept as a placeholder to avoid accidental re-introduction of conflicting config.
